@@ -1,5 +1,7 @@
-<!-- resources/js/components/Views/Boards/BoardColumn.vue -->
 <script setup lang="ts">
+
+// resources/js/components/Views/Boards/BoardColumn.vue 
+
 import { ref } from 'vue'
 import draggable, { type StartEvent } from 'vuedraggable'
 import { GripVertical } from 'lucide-vue-next'
@@ -10,6 +12,7 @@ const props = defineProps<{
   id: string
   title: string
   items: { id: string | number; [key: string]: any }[]
+  labelMap: Record<number, { id: number; name: string }>
 }>()
 
 const draggingItemId = ref<string | number | null>(null)
@@ -31,7 +34,6 @@ function handleEnd() {
   <div
     class="h-full w-[350px] flex flex-col flex-shrink-0 snap-center rounded-lg border bg-primary-foreground text-card-foreground shadow-sm"
   >
-    <!-- Column Header -->
     <div class="p-4 font-semibold border-b-2 flex items-center">
       <button
         class="inline-flex items-center justify-center rounded-md p-1 text-primary/50 -ml-2 cursor-grab hover:bg-accent hover:text-accent-foreground"
@@ -42,7 +44,6 @@ function handleEnd() {
       <span class="ml-auto">{{ title }}</span>
     </div>
 
-    <!-- Scrollable Task List fills remaining space -->
     <ScrollArea class="flex-1 overflow-hidden">
       <div class="p-2">
         <draggable
@@ -59,15 +60,13 @@ function handleEnd() {
           <template #item="{ element }">
             <BoardCard
               :item="element"
+              :label-map="labelMap"
               :is-ghost="isDraggingItem(element.id)"
             />
           </template>
 
           <template #clone="{ element }">
-            <BoardCard
-              :item="element"
-              is-overlay
-            />
+            <BoardCard :item="element" is-overlay />
           </template>
         </draggable>
       </div>

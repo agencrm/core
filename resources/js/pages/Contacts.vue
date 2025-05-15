@@ -6,7 +6,7 @@ import DataTable from '@/components/DataTable/DataTable.vue'
 import ViewController from '@/components/Views/ViewController.vue'
 import BoardView from '@/components/Views/Boards/BoardView.vue'
 import PlaceholderPattern from '@/components/PlaceholderPattern.vue'
-import CellEditableFieldLabel from '@/components/DataTable/CellEditableFieldLabel.vue'
+import CellEditableFieldLabel from '@/components/Fields/InlineEditable/Label.vue'
 
 const breadcrumbs = [{ title: 'Contacts', href: '/contacts' }]
 const contacts = ref([])
