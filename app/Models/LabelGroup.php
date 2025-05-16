@@ -6,19 +6,30 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class LabelGroup extends Model
 {
+
     use HasFactory;
 
+
+    /**
+     * 
+     */
     protected $fillable = [
         'name',
         'slug',
         'description',
     ];
 
-    public function labels()
+
+    /**
+     * 
+     */
+    public function labels(): BelongsToMany
     {
-        return $this->hasMany(Label::class);
+        return $this->belongsToMany(Label::class, 'label_group_label');
     }
+
 }

@@ -14,7 +14,7 @@ const props = withDefaults(defineProps<{
 
 <template>
   <header
-    class="flex h-16 items-center justify-between border-b border-sidebar-border/70 px-6"
+    class="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-sidebar-border/70 bg-background px-6"
   >
     <div class="flex items-center gap-2">
       <SidebarTrigger />

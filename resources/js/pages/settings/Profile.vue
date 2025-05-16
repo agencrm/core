@@ -40,12 +40,12 @@ const submit = () => {
 };
 </script>
 
-<template>
+<template >
     <AppLayout :breadcrumbs="breadcrumbs">
         <Head title="Profile settings" />
 
-        <SettingsLayout>
-            <div class="flex flex-col space-y-6">
+        <SettingsLayout >
+            <div class="flex flex-col space-y-6 ">
                 <HeadingSmall title="Profile information" description="Update your name and email address" />
 
                 <form @submit.prevent="submit" class="space-y-6">

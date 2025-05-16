@@ -18,4 +18,14 @@ Route::middleware('auth')->group(function () {
     Route::get('settings/appearance', function () {
         return Inertia::render('settings/Appearance');
     })->name('appearance');
+
+    Route::get('settings/labels', function () {
+        return Inertia::render('settings/Labels');
+    })->name('labels');
+
+    Route::get('settings/label-groups', function () {
+        return Inertia::render('settings/LabelGroups');
+    })->name('label-groups');
+
+
 });

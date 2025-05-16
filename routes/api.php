@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\FileController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\LabelController;
+use App\Http\Controllers\Api\LabelGroupController;
 
 // PUBLIC ROUTES
 Route::post('/login', [AuthController::class, 'login']);
@@ -71,7 +72,15 @@ Route::name('api.')->group(function () {
         Route::delete('/{id}', [LabelController::class, 'destroy'])->name('destroy');
     });
     
-
+    // Labels Groups
+    Route::prefix('label-groups')->name('label-groups.')->middleware('auth:sanctum')->group(function () {
+        Route::get('/', [LabelGroupController::class, 'index'])->name('index');
+        Route::get('/{id}', [LabelGroupController::class, 'show'])->name('show');
+        Route::post('/', [LabelGroupController::class, 'store'])->name('store');
+        Route::patch('/{id}', [LabelGroupController::class, 'update'])->name('update'); // ✅ ADD THIS
+        Route::delete('/{id}', [LabelGroupController::class, 'destroy'])->name('destroy');
+    });
+    
 
     
     Route::patch('/fields/{model}/{id}', function (

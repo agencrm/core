@@ -9,7 +9,6 @@ import BoardView from '@/components/Views/Boards/BoardView.vue'
 import ViewController from '@/components/Views/ViewController.vue'
 import PlaceholderPattern from '@/components/PlaceholderPattern.vue';
 import CreateElementForm from '@/components/Forms/CreateElement.vue';
-
 import CellEditableFieldColor from '@/components/DataTable/CellEditableFieldColor.vue';
 
 

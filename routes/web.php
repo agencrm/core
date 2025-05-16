@@ -27,11 +27,6 @@ Route::get('contacts', function () {
     return Inertia::render('Contacts');
 })->middleware(['auth', 'verified'])->name('contacts');
 
-
-Route::get('labels', function () {
-    return Inertia::render('Labels');
-})->middleware(['auth', 'verified'])->name('labels');
-
 Route::get('web', function () {
     return Inertia::render('Web');
 })->middleware(['auth', 'verified'])->name('web');

@@ -66,23 +66,26 @@ const columns = [
 <label-map-debug>{{ JSON.stringify(labelMap, null, 2) }}</label-map-debug>
 </pre> -->
 
-      <div v-if="view === 'table'" class="min-h-[100vh] md:min-h-min">
-        <DataTable
-          route-name="api.contacts.index"
-          :columns="columns"
-          v-model:data="contacts"
-          v-model:labelMap="labelMap"
-          auth-token="1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf"
-          search-placeholder="Search contacts..."
-        />
-      </div>
+<template v-if="view === 'table'">
+  <DataTable
+    route-name="api.contacts.index"
+    :columns="columns"
+    v-model:data="contacts"
+    v-model:labelMap="labelMap"
+    auth-token="1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf"
+    search-placeholder="Search contacts..."
+    class="min-h-[100vh] md:min-h-min"
+  />
+</template>
 
-      <div v-else>
-        <BoardView
-          route-name="api.contacts.index"
-          auth-token="1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf"
-        />
-      </div>
+<template v-else>
+  <BoardView
+    route-name="api.contacts.index"
+    auth-token="1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf"
+    class="min-h-[100vh] md:min-h-min"
+  />
+</template>
+
     </div>
   </AppLayout>
 </template>

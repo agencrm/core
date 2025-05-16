@@ -1,4 +1,7 @@
 <script setup lang="ts">
+
+// resources/js/layouts/settings/Layout.vue
+
 import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -18,11 +21,30 @@ const sidebarNavItems: NavItem[] = [
         title: 'Appearance',
         href: '/settings/appearance',
     },
+    {
+        title: 'Labels',
+        href: '/settings/labels',
+    },
+    {
+        title: 'Label Groups',
+        href: '/settings/label-groups',
+    },
 ];
 
 const page = usePage();
 
 const currentPath = page.props.ziggy?.location ? new URL(page.props.ziggy.location).pathname : '';
+
+const props = defineProps<{
+  sectionClass?: string;
+  sectionWrapperClass?: string;
+}>();
+
+const sectionClass = props.sectionClass ?? 'max-w-xl space-y-12';
+const sectionWrapperClass = props.sectionWrapperClass ?? 'flex-1 md:max-w-2xl';
+
+
+
 </script>
 
 <template>
@@ -48,8 +70,8 @@ const currentPath = page.props.ziggy?.location ? new URL(page.props.ziggy.locati
 
             <Separator class="my-6 md:hidden" />
 
-            <div class="flex-1 md:max-w-2xl">
-                <section class="max-w-xl space-y-12">
+            <div :class="sectionWrapperClass">
+                <section :class="sectionClass">
                     <slot />
                 </section>
             </div>
