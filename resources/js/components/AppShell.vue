@@ -20,7 +20,7 @@ const isOpen = usePage<SharedData>().props.sidebarOpen;
         <slot />
     </div>
     <SidebarProvider v-else :default-open="isOpen">
-        <div class="flex h-screen w-full">
+        <div class="flex h-full w-full">
             <slot />
         </div>
     </SidebarProvider>

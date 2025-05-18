@@ -190,3 +190,23 @@
 html, body, #app {
   height: 100%;
 }
+
+html body .vc-colorpicker,
+html body .vc-colorpicker--container {
+  background:none !important;
+  padding:0  !important;
+}
+
+.ghost-select {
+  background-color: transparent;
+  border: 1px solid var(--border); /* or use a Tailwind color like #d1d5db for gray-300 */
+  box-shadow: none;
+  color: var(--muted-foreground); /* or fallback like #6b7280 */
+  border-radius: 0.375rem; /* matches Tailwind's rounded-md */
+  padding: 0.25rem 0.5rem; /* optional: makes it match default spacing */
+}
+
+.ghost-select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ring); /* optional: shadcn-style focus ring */
+}

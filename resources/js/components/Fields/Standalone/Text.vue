@@ -1,43 +1,55 @@
 <script setup lang="ts">
-
-// resources/js/components/Fields/Standalone/Text.vue
-
 import { ref, watch } from 'vue'
+import { Pencil } from 'lucide-vue-next'
 
 const props = defineProps<{
-  modelValue: string | number | null
-  label?: string
+  modelValue?: string | null
   placeholder?: string
-  id?: string
-  type?: string // text, email, number, etc.
+  loading?: boolean
 }>()
 
 const emit = defineEmits(['update:modelValue'])
 
-const localValue = ref(props.modelValue ?? '')
+const editing = ref(false)
+const inputValue = ref(props.modelValue || '')
 
 watch(() => props.modelValue, (val) => {
-  localValue.value = val ?? ''
+  inputValue.value = val || ''
 })
 
-const update = (e: Event) => {
-  const value = (e.target as HTMLInputElement).value
-  emit('update:modelValue', value)
+const startEditing = () => {
+  editing.value = true
+  inputValue.value = props.modelValue || ''
+}
+
+const stopEditing = () => {
+  editing.value = false
+  emit('update:modelValue', inputValue.value)
 }
 </script>
 
 <template>
-  <div class="w-full space-y-1">
-    <label v-if="props.label" :for="props.id" class="text-sm font-medium">
-      {{ props.label }}
-    </label>
-    <input
-      :id="props.id"
-      :type="props.type || 'text'"
-      class="mt-1 block w-full rounded-md border px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
-      :placeholder="props.placeholder || ''"
-      :value="localValue"
-      @input="update"
-    />
+  <div class="inline-flex items-center gap-1">
+    <template v-if="editing">
+      <input
+        v-model="inputValue"
+        class="text-sm px-2 py-1 border rounded focus:outline-none focus:ring"
+        @blur="stopEditing"
+        @keyup.enter="stopEditing"
+        :disabled="props.loading"
+        autofocus
+      />
+    </template>
+    <template v-else>
+      <button
+        @click="startEditing"
+        class="text-sm text-left px-2 py-1 hover:bg-gray-100 rounded flex items-center gap-1 group"
+      >
+        <span class="truncate max-w-[150px]">
+          {{ props.modelValue || props.placeholder || '—' }}
+        </span>
+        <Pencil class="w-3 h-3 opacity-30 group-hover:opacity-80 transition" />
+      </button>
+    </template>
   </div>
 </template>

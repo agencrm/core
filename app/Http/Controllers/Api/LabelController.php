@@ -8,45 +8,31 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\LabelResource;
 use App\Models\Label;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use App\Services\Api\ApiQueryService;
 
 class LabelController extends Controller
 {
 
-
-    public function index(Request $request)
+    /**
+     * 
+     */
+    public function index(Request $request, ApiQueryService $apiQuery)
     {
-        // ✅ Validate query params
-        $validated = $request->validate([
-            'search'    => 'nullable|string',
-            'sort'      => 'nullable|in:name,description,color,created_at,sort_order',
-            'direction' => 'nullable|in:asc,desc',
-            'perPage'   => 'nullable|integer|min:1|max:100',
-            'page'      => 'nullable|integer|min:1',
-        ]);
-
         $query = Label::with('groups');
 
-        // 🔍 Apply search filter
-        if (!empty($validated['search'])) {
-            $query->where(function ($q) use ($validated) {
-                $q->where('name', 'like', '%' . $validated['search'] . '%')
-                ->orWhere('description', 'like', '%' . $validated['search'] . '%');
-            });
-        }
+        $result = $apiQuery
+            ->forModel($query)
+            ->searchable(['name', 'description'])
+            ->sortable(['name', 'description', 'color', 'created_at', 'sort_order'])
+            ->apply();
 
-        // 📊 Apply sorting if specified
-        if (!empty($validated['sort'])) {
-            $direction = $validated['direction'] ?? 'asc';
-            $query->orderBy($validated['sort'], $direction);
-        } else {
-            $query->latest(); // default sort
-        }
-
-        // 📄 Use perPage from validated input or default to 15
-        $perPage = $validated['perPage'] ?? 15;
-
-        return LabelResource::collection($query->paginate($perPage));
+        return response()->json([
+            'data' => LabelResource::collection($result['results']),
+            'meta' => $result['meta'],
+        ]);
     }
+
 
 
     public function show($id)

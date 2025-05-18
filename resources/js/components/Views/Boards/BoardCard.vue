@@ -2,7 +2,7 @@
 // resources/js/components/Views/Boards/BoardCard.vue
 
 import { GripVertical } from 'lucide-vue-next'
-import CellEditableFieldLabel from '@/components/Fields/InlineEditable/Label.vue'
+import CellEditableFieldLabel from '@/components/Fields/InPlaceEditable/Label.vue'
 
 const props = defineProps<{
   item: any

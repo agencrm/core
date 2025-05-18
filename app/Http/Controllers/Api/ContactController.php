@@ -6,38 +6,43 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ContactResource;
-use App\Models\Contact;
+
 use Illuminate\Http\Request;
+
+use Illuminate\Support\Facades\Log;
+use App\Services\Api\ApiQueryService;
+
+use App\Models\Contact;
 use App\Models\Label;
 
 
 class ContactController extends Controller
 {
-    // public function index(Request $request)
-    // {
-    //     return ContactResource::collection(Contact::latest()->paginate(15));
-    // }
 
-    public function index(Request $request)
+
+    /**
+     * 
+     */
+    public function index(Request $request, ApiQueryService $apiQuery)
     {
-        $contacts = Contact::latest()->get(); // you can re-add pagination later
-    
-        // Grab all label_ids from dynamic fields
-        $labelIds = $contacts
-            ->map(fn($c) => $c->getField('label_id'))
-            ->filter()
-            ->unique();
-    
-        $labels = Label::whereIn('id', $labelIds)->get()->values();
-    
+        $query = Contact::latest();
+
+        $result = $apiQuery
+            ->forModel($query)
+            ->searchable(['first_name', 'last_name', 'email'])
+            ->sortable(['name', 'created_at'])
+            ->apply();
+
         return response()->json([
-            'data' => ContactResource::collection($contacts),
-            'sideloaded' => [
-                'labels' => $labels,
-            ],
+            'data' => ContactResource::collection($result['results']),
+            'meta' => $result['meta'],
         ]);
     }
 
+
+    /**
+     * 
+     */
     public function show($id)
     {
         return new ContactResource(Contact::findOrFail($id));

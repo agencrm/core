@@ -5,7 +5,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import axios from 'axios'
 
-// ShadCN Combobox primitives
+// ShadCN Combobox (Command + Popover)
 import {
   Command,
   CommandEmpty,
@@ -35,25 +35,24 @@ const props = defineProps<{
 
 const emit = defineEmits(['update:modelValue'])
 
-const open = ref(false)
-const loading = ref(false)
-const options = ref<any[]>([])
-
 const selected = ref<Array<string>>(Array.isArray(props.modelValue)
   ? props.modelValue.map(String)
-  : props.modelValue !== null && props.modelValue !== undefined
+  : props.modelValue
   ? [String(props.modelValue)]
-  : []
-)
+  : [])
+
+const options = ref<any[]>([])
+const open = ref(false)
+const loading = ref(false)
 
 const labelField = computed(() => props.optionLabel || 'name')
 const valueField = computed(() => props.optionValue || 'id')
 
-const selectedOptions = computed(() =>
-  options.value.filter(opt =>
+const selectedOptions = computed(() => {
+  return options.value.filter(opt =>
     selected.value.includes(String(opt[valueField.value]))
   )
-)
+})
 
 const fetchOptions = async () => {
   loading.value = true
@@ -65,7 +64,7 @@ const fetchOptions = async () => {
     })
     options.value = res.data.data ?? []
   } catch (err) {
-    console.error('❌ Error fetching options:', err)
+    console.error('Error fetching combobox options:', err)
   } finally {
     loading.value = false
   }
@@ -79,20 +78,18 @@ const updateSelection = (newVal: string) => {
     } else {
       selected.value.push(newVal)
     }
-    emit('update:modelValue', selected.value.map(val =>
-      typeof props.modelValue?.[0] === 'number' ? Number(val) : val
-    ))
+    emit('update:modelValue', [...selected.value])
   } else {
     selected.value = [newVal]
-    emit('update:modelValue', typeof props.modelValue === 'number' ? Number(newVal) : newVal)
+    emit('update:modelValue', newVal)
     open.value = false
   }
 }
 
-watch(() => props.modelValue, (val) => {
+watch(() => props.modelValue, val => {
   selected.value = Array.isArray(val)
     ? val.map(String)
-    : val !== null && val !== undefined
+    : val
     ? [String(val)]
     : []
 })
@@ -110,21 +107,16 @@ onMounted(fetchOptions)
         class="w-full justify-between"
         :disabled="loading"
       >
-        <span v-if="selectedOptions.length">
-          {{
-            props.multiple
-              ? selectedOptions.map(o => o[labelField]).join(', ')
-              : selectedOptions[0]?.[labelField]
-          }}
-        </span>
-        <span v-else class="text-muted-foreground">
-          {{ props.placeholder || 'Select an option' }}
-        </span>
+        {{
+          props.multiple
+            ? selectedOptions.map(o => o?.[labelField]).join(', ')
+            : selectedOptions[0]?.[labelField] || props.placeholder || 'Select an option'
+        }}
         <ChevronsUpDown class="ml-2 h-4 w-4 shrink-0 opacity-50" />
       </Button>
     </PopoverTrigger>
     <PopoverContent class="w-full p-0">
-      <Command>
+      <Command v-model="selected">
         <CommandInput :placeholder="props.placeholder || 'Search...'" />
         <CommandEmpty>No results found.</CommandEmpty>
         <CommandList>
@@ -133,7 +125,7 @@ onMounted(fetchOptions)
               v-for="opt in options"
               :key="opt[valueField]"
               :value="String(opt[valueField])"
-              @select="() => updateSelection(String(opt[valueField]))"
+              @select="updateSelection(String(opt[valueField]))"
             >
               <Check
                 :class="cn(
@@ -148,4 +140,11 @@ onMounted(fetchOptions)
       </Command>
     </PopoverContent>
   </Popover>
+
+
+<pre class="mt-4 text-xs text-gray-500 bg-gray-100 p-2 rounded overflow-auto">
+  {{ JSON.stringify(props, null, 2) }}
+</pre>
+
+
 </template>

@@ -6,7 +6,7 @@ import DataTable from '@/components/DataTable/DataTable.vue'
 import ViewController from '@/components/Views/ViewController.vue'
 import BoardView from '@/components/Views/Boards/BoardView.vue'
 import PlaceholderPattern from '@/components/PlaceholderPattern.vue'
-import CellEditableFieldLabel from '@/components/Fields/InlineEditable/Label.vue'
+import CellEditableFieldLabel from '@/components/Fields/InPlaceEditable/Label.vue'
 
 const breadcrumbs = [{ title: 'Contacts', href: '/contacts' }]
 const contacts = ref([])
@@ -55,37 +55,43 @@ const columns = [
 </script>
 
 <template>
-  <Head title="Contacts" />
-  <AppLayout :breadcrumbs="breadcrumbs">
-    <template #view-controls>
-      <ViewController :view="view" @update:view="val => view = val" />
-    </template>
+    <Head title="Contacts" />
+    <AppLayout :breadcrumbs="breadcrumbs">
+        <template #view-controls>
+        <ViewController :view="view" @update:view="val => view = val" />
+        </template>
 
-    <div class="flex flex-col gap-4 p-4">
-      <!-- <pre class="text-xs bg-muted p-2 rounded whitespace-pre overflow-auto max-h-40">
-<label-map-debug>{{ JSON.stringify(labelMap, null, 2) }}</label-map-debug>
-</pre> -->
+        <div class="flex flex-col gap-4 p-4">
+                <!-- <pre class="text-xs bg-muted p-2 rounded whitespace-pre overflow-auto max-h-40">
+            <label-map-debug>{{ JSON.stringify(labelMap, null, 2) }}</label-map-debug>
+            </pre> -->
 
-<template v-if="view === 'table'">
-  <DataTable
-    route-name="api.contacts.index"
-    :columns="columns"
-    v-model:data="contacts"
-    v-model:labelMap="labelMap"
-    auth-token="1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf"
-    search-placeholder="Search contacts..."
-    class="min-h-[100vh] md:min-h-min"
-  />
-</template>
+            <template v-if="view === 'table'">
 
-<template v-else>
-  <BoardView
-    route-name="api.contacts.index"
-    auth-token="1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf"
-    class="min-h-[100vh] md:min-h-min"
-  />
-</template>
 
-    </div>
-  </AppLayout>
+                <DataTable
+                    endpoint-route="api.contacts.index"
+                    :columns="columns"
+                    search-placeholder="Search contacts..."
+                    auth-token="1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf"
+                    v-slot:expand="{ row }"
+                >
+                    <div class="p-2">
+                        <strong>Path:</strong> {{ row.original.path }}<br />
+                        <strong>Size:</strong> {{ (row.original.size / 1024).toFixed(2) }} KB
+                    </div>
+                </DataTable>
+
+            </template>
+
+            <template v-else>
+            <BoardView
+                route-name="api.contacts.index"
+                auth-token="1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf"
+                class="min-h-[100vh] md:min-h-min"
+            />
+            </template>
+
+        </div>
+    </AppLayout>
 </template>

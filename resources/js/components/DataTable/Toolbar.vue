@@ -1,72 +1,121 @@
-    <script setup lang="ts">
+<script setup lang="ts">
 
-    // resources/js/components/DataTable/Toolbar.vue
+// resources/js/components/DataTable/Pagination.vue
 
-    import { ref, watch, computed } from 'vue'
-    import { Input } from '@/components/ui/input'
-    import { Button } from '@/components/ui/button'
-    import {
-    DropdownMenu,
-    DropdownMenuCheckboxItem,
-    DropdownMenuContent,
-    DropdownMenuTrigger,
-    } from '@/components/ui/dropdown-menu'
-    import { RotateCcw, LayoutPanelLeft } from 'lucide-vue-next'
+import { ref, watch } from 'vue'
+import debounce from 'lodash/debounce'
 
-    const props = defineProps<{
-    search: string
-    perPage?: number
-    perPageOptions?: number[]
-    table: any
-    loading?: boolean
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { ChevronFirst, ChevronLeft, ChevronRight, ChevronLast, RotateCcw, LayoutPanelLeft } from 'lucide-vue-next'
+
+// Shad CN
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  NumberField,
+  NumberFieldContent,
+  NumberFieldDecrement,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from '@/components/ui/number-field'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+
+const props = defineProps<{
+  table: any
+  loading?: boolean
+  pagination: {
+    pageIndex: number
+    pageSize: number
+  }
+  totalPages: number
+  rowCount: number
+  totalRowCount: number
+  setPageIndex: (index: number) => void
+  setPageSize: (size: number) => void
+  canPreviousPage: boolean
+  canNextPage: boolean
     rowsLabel?: string
-    }>()
+}>()
 
-    const emit = defineEmits<{
-    (e: 'update:search', value: string): void
-    (e: 'update:perPage', value: number): void
-    (e: 'refresh'): void
-    }>()
 
-    const internalSearch = ref(props.search)
-    const defaultPerPage = computed(() => props.perPage ?? 10)
-    const label = computed(() => props.rowsLabel ?? 'Rows:')
+const emit = defineEmits<{
+  (e: 'update:search', value: string): void
+  (e: 'update:perPage', value: number): void
+  (e: 'refresh'): void
+}>()
 
-    watch(internalSearch, (val) => {
-    emit('update:search', val)
-    })
+const internalSearch = ref(props.search)
 
-    const handlePerPageChange = (e: Event) => {
-    const value = parseInt((e.target as HTMLSelectElement).value)
-    emit('update:perPage', value)
-    }
+watch(() => props.search, val => {
+  internalSearch.value = val
+})
+
+// ✅ Debounce emit
+const debouncedSearch = debounce((val: string) => {
+  emit('update:search', val)
+}, 300)
+
+watch(internalSearch, val => {
+  debouncedSearch(val)
+})
+
 </script>
-
 
 <template>
 
-    <div class="flex flex-wrap justify-between items-center gap-1 py-1">
+    <div class="flex flex-wrap justify-between items-center gap-2 py-2">
         <!-- Left Controls -->
         <div class="flex gap-2 items-center">
-            <label for="perPageSelect" class="text-sm text-muted-foreground">{{ label }}</label>
-            <select
-                id="perPageSelect"
-                :value="defaultPerPage"
-                @change="handlePerPageChange"
-                class="px-2 py-1 rounded border text-sm"
-            >
-                <option
-                v-for="opt in perPageOptions ?? [10, 15, 25, 50, 100]"
-                :key="opt"
-                :value="opt"
-                >
-                {{ opt }}
-                </option>
-            </select>
+            <label for="perPageSelect" class="text-sm text-muted-foreground">
+                {{ props.rowsLabel ?? 'Rows:' }}
+            </label>
 
-            <Button variant="ghost" size="icon" class="h-9 w-9" @click="emit('refresh')" :disabled="loading">
+            <Select
+                :value="pagination.pageSize.toString()"
+                @update:modelValue="val => setPageSize(Number(val))"
+            >
+                <SelectTrigger
+                    class="ghost-select"
+                >
+                    <SelectValue :placeholder="`${pagination.pageSize}`" />
+                </SelectTrigger>
+
+                <SelectContent class="bg-popover text-sm">
+                    <SelectItem
+                    v-for="size in [10, 20, 30, 40, 50]"
+                    :key="size"
+                    :value="size.toString()"
+                    class="cursor-pointer hover:bg-muted"
+                    >
+                    {{ size }}
+                    </SelectItem>
+                </SelectContent>
+            </Select>
+
+
+
+            <Button
+                variant="ghost"
+                size="icon"
+                class="h-9 w-9"
+                @click="emit('refresh')"
+
+            >
                 <RotateCcw class="h-4 w-4" />
             </Button>
+
 
             <DropdownMenu>
                 <DropdownMenuTrigger as-child>
@@ -86,6 +135,7 @@
                 </DropdownMenuCheckboxItem>
                 </DropdownMenuContent>
             </DropdownMenu>
+
         </div>
 
         <!-- Right Search -->
@@ -93,9 +143,12 @@
         <Input
             v-model="internalSearch"
             class="max-w-52"
-            :placeholder="'Search...'"
+            :placeholder="`Search...`"
         />
         </div>
+
+        
     </div>
+
 
 </template>
