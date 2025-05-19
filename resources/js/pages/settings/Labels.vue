@@ -139,19 +139,21 @@ const columns = [
         }),
     },
     {
-    accessorKey: 'groups',
-    header: 'Label Groups',
+        accessorKey: 'groups',
+        header: 'Label Groups',
     cell: ({ row }) => h(CellEditableCombobox, {
-        modelValue: row.original.groups.map(g => g.id),
-        labelId: row.original.id,
+        model: 'labels',
+        modelId: row.original.id,
+        field: 'label_group_ids',
+        value: row.original.groups.map(g => g.id), // correct prop name if your component expects `value`
         endpoint: '/api/label-groups',
         token: '1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf',
         optionLabel: 'name',
         optionValue: 'id',
         'onUpdate:modelValue': (newVal) => {
-        row.original.groups = newVal // optionally reassign
+            row.original.groups = newVal
         }
-    }),
+    })
     },
     { accessorKey: 'description', header: 'Description', cell: ({ row }) => row.getValue('description') },
     { accessorKey: 'created_at', header: 'Created At', cell: ({ row }) => new Date(row.getValue('created_at')).toLocaleString() },

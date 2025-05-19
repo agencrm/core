@@ -3,6 +3,20 @@ import { ref, onMounted, watch, h } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { Head } from '@inertiajs/vue3'
 import DataTable from '@/components/DataTable/DataTable.vue'
+
+import { Plus, Settings2, SlidersHorizontal  } from 'lucide-vue-next';
+
+
+// Components
+import {
+Dialog,
+DialogContent,
+DialogDescription,
+DialogHeader,
+DialogTitle,
+DialogTrigger,
+} from "@/components/ui/dialog"
+
 import ViewController from '@/components/Views/ViewController.vue'
 import BoardView from '@/components/Views/Boards/BoardView.vue'
 import PlaceholderPattern from '@/components/PlaceholderPattern.vue'
@@ -11,6 +25,15 @@ import CellEditableFieldLabel from '@/components/Fields/InPlaceEditable/Label.vu
 const breadcrumbs = [{ title: 'Contacts', href: '/contacts' }]
 const contacts = ref([])
 const labelMap = ref({})
+const showBoardControls = ref(false)
+
+
+const form = ref({
+    name: '',
+    description: '',
+    label_group_ids: [],
+})
+
 
 // view state
 const routeKey = `viewMode:/contacts`
@@ -58,7 +81,47 @@ const columns = [
     <Head title="Contacts" />
     <AppLayout :breadcrumbs="breadcrumbs">
         <template #view-controls>
-        <ViewController :view="view" @update:view="val => view = val" />
+
+            <div class="flex justify-between items-center px-2 md:px-0">
+
+                <ViewController :view="view" @update:view="val => view = val" />
+
+                <button
+                    @click="showBoardControls = !showBoardControls"
+                    class="p-2 rounded hover:bg-accent hover:text-accent-foreground transition"
+                    title="Toggle Board Controls"
+                >
+                    <Settings2 />
+                </button>
+            </div>
+
+        </template>
+
+        <template #action-controls>
+
+
+
+            <Dialog>
+            <DialogTrigger>
+                <Plus />
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                <DialogTitle class="flex items-center justify-between border-b pb-3">Create A Label</DialogTitle>
+                <DialogDescription>
+                    <CreateElementForm
+                    :endpoint="'/api/labels'"
+                    :fields="form"
+                    :field-map="fieldMap"
+                    :auth-token="'1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf'"
+                    :onSuccess="handleSuccess"
+                    :onError="handleError"
+                    >
+                </CreateElementForm>
+                </DialogDescription>
+                </DialogHeader>
+            </DialogContent>
+            </Dialog>
         </template>
 
         <div class="flex flex-col gap-4 p-4">
@@ -89,6 +152,7 @@ const columns = [
                 route-name="api.contacts.index"
                 auth-token="1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf"
                 class="min-h-[100vh] md:min-h-min"
+  :show-board-controls="showBoardControls"
             />
             </template>
 

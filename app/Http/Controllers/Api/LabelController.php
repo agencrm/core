@@ -17,21 +17,30 @@ class LabelController extends Controller
     /**
      * 
      */
-    public function index(Request $request, ApiQueryService $apiQuery)
-    {
-        $query = Label::with('groups');
+        public function index(Request $request, ApiQueryService $apiQuery)
+        {
+            $query = Label::with('groups');
 
-        $result = $apiQuery
-            ->forModel($query)
-            ->searchable(['name', 'description'])
-            ->sortable(['name', 'description', 'color', 'created_at', 'sort_order'])
-            ->apply();
+            // ✅ Filter by label group(s)
+            if ($request->filled('group_ids')) {
+                $groupIds = $request->input('group_ids');
+                $query->whereHas('groups', function ($q) use ($groupIds) {
+                    $q->whereIn('id', (array) $groupIds);
+                });
+            }
 
-        return response()->json([
-            'data' => LabelResource::collection($result['results']),
-            'meta' => $result['meta'],
-        ]);
-    }
+
+            $result = $apiQuery
+                ->forModel($query)
+                ->searchable(['name', 'description'])
+                ->sortable(['name', 'description', 'color', 'created_at', 'sort_order'])
+                ->apply();
+
+            return response()->json([
+                'data' => LabelResource::collection($result['results']),
+                'meta' => $result['meta'],
+            ]);
+        }
 
 
 

@@ -144,7 +144,7 @@ onMounted(async () => {
         >
          <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
               <DataTable
-                route-name="api.label-groups.index"
+                endpoint-route="api.label-groups.index"
                 :columns="columns"
                 search-placeholder="Search labels..."
                 auth-token="1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf"

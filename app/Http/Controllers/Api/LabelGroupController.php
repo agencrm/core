@@ -6,9 +6,14 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\LabelGroupResource;
-use App\Models\LabelGroup;
+
+use Illuminate\Support\Facades\Log;
+use App\Services\Api\ApiQueryService;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+
+use App\Models\LabelGroup;
 
 class LabelGroupController extends Controller
 {
@@ -17,9 +22,46 @@ class LabelGroupController extends Controller
     /**
      * 
      */
-    public function index(Request $request)
+    public function index_V1(Request $request)
     {
         return LabelGroupResource::collection(LabelGroup::latest()->paginate(15));
+    }
+
+
+    public function index_V2(Request $request, ApiQueryService $apiQuery)
+    {
+        $query = LabelGroup::latest();
+
+        $result = $apiQuery
+            ->forModel($query)
+            ->searchable(['name'])
+            ->sortable(['name', 'created_at'])
+            ->apply();
+
+        return response()->json([
+            'data' => LabelGroupResource::collection($result['results']),
+            'meta' => $result['meta'],
+        ]);
+    } 
+
+    /**
+     * 
+     */
+    public function index(Request $request, ApiQueryService $apiQuery)
+    {
+    
+        $query = LabelGroup::latest();
+
+        $result = $apiQuery
+            ->forModel($query)
+            ->searchable(['name'])
+            ->sortable(['name', 'created_at'])
+            ->apply();
+
+        return response()->json([
+            'data' => LabelGroupResource::collection($result['results']),
+            'meta' => $result['meta'],
+        ]);
     }
 
 

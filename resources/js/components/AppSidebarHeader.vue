@@ -25,7 +25,10 @@ const props = withDefaults(defineProps<{
 
     <div class="ml-auto flex items-center gap-2">
       <slot name="view-controls" />
+    </div>
+    <div class="ml-auto flex items-center gap-2">
       <slot name="action-controls" />
     </div>
+
   </header>
 </template>
