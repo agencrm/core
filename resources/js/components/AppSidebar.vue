@@ -16,6 +16,11 @@ const mainNavItems: NavItem[] = [
         icon: LayoutGrid,
     },
     {
+        title: 'CRM',
+        href: '/contacts',
+        icon: Handshake,
+    },
+    {
         title: 'Files',
         href: '/files',
         icon: Folder,
@@ -35,12 +40,6 @@ const mainNavItems: NavItem[] = [
         href: '/users',
         icon: Users,
     },
-    {
-        title: 'CRM',
-        href: '/contacts',
-        icon: Handshake,
-    },
-
 ];
 
 const footerNavItems: NavItem[] = [

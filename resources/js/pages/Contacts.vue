@@ -91,7 +91,7 @@ const columns = [
                     class="p-2 rounded hover:bg-accent hover:text-accent-foreground transition"
                     title="Toggle Board Controls"
                 >
-                    <Settings2 />
+                    <Settings2 class="text-muted-foreground"/>
                 </button>
             </div>
 
@@ -152,7 +152,8 @@ const columns = [
                 route-name="api.contacts.index"
                 auth-token="1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf"
                 class="min-h-[100vh] md:min-h-min"
-  :show-board-controls="showBoardControls"
+                :show-board-controls="showBoardControls"
+                :label-group-id="1"
             />
             </template>
 

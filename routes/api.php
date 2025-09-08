@@ -56,7 +56,7 @@ Route::name('api.')->group(function () {
     });
 
     // Contacts
-    Route::prefix('contacts')->name('contacts.')->middleware('auth:sanctum')->group(function () {
+    Route::prefix('contacts')->name('contacts.')->group(function () {
         Route::get('/', [ContactController::class, 'index'])->name('index');
         Route::get('/{id}', [ContactController::class, 'show'])->name('show');
         Route::post('/', [ContactController::class, 'store'])->name('store');
@@ -64,7 +64,7 @@ Route::name('api.')->group(function () {
     });
 
     // Labels
-    Route::prefix('labels')->name('labels.')->middleware('auth:sanctum')->group(function () {
+    Route::prefix('labels')->name('labels.')->group(function () {
         Route::get('/', [LabelController::class, 'index'])->name('index');
         Route::get('/{id}', [LabelController::class, 'show'])->name('show');
         Route::post('/', [LabelController::class, 'store'])->name('store');
