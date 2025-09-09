@@ -9,6 +9,7 @@ use App\Models\Sanctum\PersonalAccessToken;
 use Laravel\Sanctum\Sanctum;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\URL; 
 
 class AppServiceProvider extends ServiceProvider
 {
