@@ -1,9 +1,9 @@
 <script setup lang="ts">
 // resources/js/pages/Flows/FlowIndex.vue
 
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, h } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
-import { Head } from '@inertiajs/vue3'
+import { Head, Link } from '@inertiajs/vue3'
 import DataTable from '@/components/DataTable/DataTable.vue'
 import { Plus, Settings2 } from 'lucide-vue-next'
 
@@ -48,8 +48,41 @@ watch(view, val => {
 })
 
 // flows table columns
+// const columns = [
+//   { accessorKey: 'name', header: 'Name', cell: ({ row }) => row.getValue('name') },
+//   { accessorKey: 'slug', header: 'Slug', cell: ({ row }) => row.getValue('slug') },
+//   { accessorKey: 'status', header: 'Status', cell: ({ row }) => row.getValue('status') ?? 'draft' },
+//   {
+//     accessorKey: 'updated_at',
+//     header: 'Updated',
+//     cell: ({ row }) => new Date(row.getValue('updated_at')).toLocaleString(),
+//   },
+// ]
+
 const columns = [
-  { accessorKey: 'name', header: 'Name', cell: ({ row }) => row.getValue('name') },
+  {
+    accessorKey: 'id',
+    header: 'ID',
+    cell: ({ row }) => {
+      const id = row.original.id
+      const href = (typeof route === 'function')
+        ? route('flows.show', id)
+        : `/flows/${id}`
+      return h(Link, { href, class: 'text-blue-600 hover:underline' }, () => String(id))
+    },
+  },
+  {
+    accessorKey: 'name',
+    header: 'Name',
+    cell: ({ row }) => {
+      const id = row.original.id
+      const name = row.getValue('name')
+      const href = (typeof route === 'function')
+        ? route('flows.show', id)
+        : `/flows/${id}`
+      return h(Link, { href, class: 'text-blue-600 hover:underline' }, () => name)
+    },
+  },
   { accessorKey: 'slug', header: 'Slug', cell: ({ row }) => row.getValue('slug') },
   { accessorKey: 'status', header: 'Status', cell: ({ row }) => row.getValue('status') ?? 'draft' },
   {
