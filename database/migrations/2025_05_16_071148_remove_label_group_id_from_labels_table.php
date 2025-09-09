@@ -11,13 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('label_group_label', function (Blueprint $table) {
-            $table->foreignId('label_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('label_group_id')->constrained()->cascadeOnDelete();
-            $table->timestamps();
+        if (!Schema::hasTable('label_group_label')) {
+            Schema::create('label_group_label', function (Blueprint $table) {
+                $table->foreignId('label_id')->constrained()->cascadeOnDelete();
+                $table->foreignId('label_group_id')->constrained()->cascadeOnDelete();
+                $table->timestamps();
 
-            $table->primary(['label_id', 'label_group_id']);
-        });
+                $table->primary(['label_id', 'label_group_id']);
+            });
+        }
     }
 
     /**
@@ -25,9 +27,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('labels', function (Blueprint $table) {
-            $table->foreignId('label_group_id')->constrained()->cascadeOnDelete();
-        });
+        if (Schema::hasTable('label_group_label')) {
+            Schema::dropIfExists('label_group_label');
+        }
     }
-
 };
