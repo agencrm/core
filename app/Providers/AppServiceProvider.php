@@ -27,7 +27,9 @@ class AppServiceProvider extends ServiceProvider
     {
         //
        // Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
-
+        if (app()->environment('production')) {
+            URL::forceScheme('https');
+        }
 
         Inertia::share('auth', function () {
             return [

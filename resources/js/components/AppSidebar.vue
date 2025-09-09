@@ -5,7 +5,7 @@ import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
-import { BookOpen, Folder, LayoutGrid, Presentation, MessageSquare, Users, Tag, Handshake } from 'lucide-vue-next';
+import { BookOpen, Folder, LayoutGrid, Presentation, MessageSquare, Users, Tag, Handshake, Workflow } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 import AppearanceDropdown from '@/components/AppearanceDropdown.vue'
 
@@ -19,6 +19,11 @@ const mainNavItems: NavItem[] = [
         title: 'CRM',
         href: '/contacts',
         icon: Handshake,
+    },
+    {
+        title: 'Flows',
+        href: '/flows',
+        icon: Workflow,
     },
     {
         title: 'Files',

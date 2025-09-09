@@ -1,37 +1,41 @@
 <script setup lang="ts">
+// resources/js/components/Forms/CreateElement.vue
+
 import { ref, reactive } from 'vue'
 import { Button } from '@/components/ui/button'
 
-import StandaloneCombobox from '@/components/Fields/Standalone/Combobox.vue';
-import StandaloneText from '@/components/Fields/Standalone/Text.vue';
+import StandaloneCombobox from '@/components/Fields/Standalone/Combobox.vue'
+import StandaloneText from '@/components/Fields/Standalone/Text.vue'
 
-const fieldComponentMap = {
+type FieldConfig = {
+  key: string
+  type?: 'text' | 'combobox'
+  label?: string
+  placeholder?: string
+  endpoint?: string
+  optionLabel?: string
+  optionValue?: string
+  attributes?: Record<string, any>
+}
+
+const fieldComponentMap: Record<string, any> = {
   text: StandaloneText,
   combobox: StandaloneCombobox,
 }
 
-
 const props = defineProps<{
   endpoint: string
-  fields: Record<string, any> // will be cloned for internal state
-    fieldMap?: {
-    key: string
-    type?: 'text' | 'combobox'
-    label?: string
-    placeholder?: string
-    endpoint?: string
-    optionLabel?: string
-    optionValue?: string
-  }[]
+  fields: Record<string, any>
+  fieldMap?: FieldConfig[]
   token?: string
   onSuccess?: (response: any) => void
   onError?: (error: any) => void
 }>()
 
 const isSubmitting = ref(false)
-const values = reactive({ ...props.fields }) // internal clone
+const values = reactive({ ...props.fields })
 
-const handleSubmit = async () => {
+async function handleSubmit() {
   isSubmitting.value = true
   try {
     const res = await fetch(props.endpoint, {
@@ -39,16 +43,21 @@ const handleSubmit = async () => {
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
-        ...(props.token && { Authorization: `Bearer ${props.token}` }),
+        ...(props.token ? { Authorization: `Bearer ${props.token}` } : {}),
       },
       body: JSON.stringify(values),
     })
 
-    if (!res.ok) throw await res.json()
-
     const json = await res.json()
+    if (!res.ok) throw json
+
     props.onSuccess?.(json)
-    Object.keys(values).forEach((k) => values[k] = '') // reset after success
+
+    // reset fields
+    Object.keys(values).forEach((k) => {
+      const v = values[k]
+      values[k] = Array.isArray(v) ? [] : ''
+    })
   } catch (error) {
     props.onError?.(error)
   } finally {
@@ -59,35 +68,33 @@ const handleSubmit = async () => {
 
 <template>
   <form @submit.prevent="handleSubmit" class="space-y-4">
-
     <slot name="before-fields" />
 
-    <div v-for="field in props.fieldMap || []" :key="field.key">
+    <div v-for="field in (fieldMap || [])" :key="field.key">
       <label :for="field.key" class="text-sm font-medium capitalize">
         {{ field.label || field.key.replace(/_/g, ' ') }}
       </label>
 
-      <!-- TEXT FIELD -->
+      <component
+        v-if="fieldComponentMap[field.type || 'text']"
+        :is="fieldComponentMap[field.type || 'text']"
+        v-model="values[field.key]"
+        :id="field.key"
+        :endpoint="field.endpoint"
+        :option-label="field.optionLabel"
+        :option-value="field.optionValue"
+        :placeholder="field.placeholder"
+        v-bind="field.attributes"
+        class="mt-1 block w-full"
+      />
+
       <input
-        v-if="fieldComponentMap[field.type || 'text'] === 'input'"
+        v-else
         :id="field.key"
         v-model="values[field.key]"
         type="text"
         class="mt-1 block w-full rounded-md border px-3 py-2 text-sm shadow-sm"
         :placeholder="field.placeholder || `Enter ${field.label || field.key}`"
-      />
-
-      <!-- COMBOBOX FIELD -->
-      <component
-        v-else
-        :is="fieldComponentMap[field.type]"
-        v-model="values[field.key]"
-        :endpoint="field.endpoint"
-        :token="token"
-        :option-label="field.optionLabel"
-        :option-value="field.optionValue"
-        :placeholder="field.placeholder"
-        v-bind="field.attributes"
       />
     </div>
 
@@ -101,6 +108,5 @@ const handleSubmit = async () => {
         </Button>
       </div>
     </slot>
-  
   </form>
 </template>

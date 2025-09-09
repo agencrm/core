@@ -1,7 +1,11 @@
 <?php
 
+// routes/web.php
+
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+
+use App\Http\Controllers\Web\FlowController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome');
@@ -26,6 +30,12 @@ Route::get('messages', function () {
 Route::get('contacts', function () {
     return Inertia::render('Contacts');
 })->middleware(['auth', 'verified'])->name('contacts');
+
+Route::prefix('flows')->name('flows.')->group(function () {
+    Route::get('/', [FlowController::class, 'index'])->name('index'); 
+    Route::get('/{id}', [FlowController::class, 'show'])->name('show');  // GET /api/flows/{id}
+});
+
 
 Route::get('web', function () {
     return Inertia::render('Web');

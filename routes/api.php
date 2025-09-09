@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\LabelController;
 use App\Http\Controllers\Api\LabelGroupController;
+use App\Http\Controllers\Api\FlowController;
 
 // PUBLIC ROUTES
 Route::post('/login', [AuthController::class, 'login']);
@@ -81,6 +82,14 @@ Route::name('api.')->group(function () {
         Route::delete('/{id}', [LabelGroupController::class, 'destroy'])->name('destroy');
     });
     
+    // Flows
+    Route::prefix('flows')->name('flows.')->middleware('auth:sanctum')->group(function () {
+        Route::get('/', [FlowController::class, 'index'])->name('index');     // GET /api/flows
+        Route::get('/{id}', [FlowController::class, 'show'])->name('show');  // GET /api/flows/{id}
+        Route::post('/', [FlowController::class, 'store'])->name('store');   // POST /api/flows
+        Route::patch('/{id}', [FlowController::class, 'update'])->name('update'); // PATCH /api/flows/{id}
+        Route::delete('/{id}', [FlowController::class, 'destroy'])->name('destroy'); // DELETE /api/flows/{id}
+    });
 
     
     Route::patch('/fields/{model}/{id}', function (
