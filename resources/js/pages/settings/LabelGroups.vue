@@ -2,6 +2,8 @@
 
 // resources/js/pages/settings/Labels.vue
 
+const apiKey = import.meta.env.APP_API_KEY
+
 import { ref, onMounted, watch, h } from 'vue'
 import { Head } from '@inertiajs/vue3';
 import { Plus  } from 'lucide-vue-next';
@@ -93,7 +95,7 @@ const columns = [
   //     modelValue: row.original.color,
   //     'onUpdate:modelValue': (newColor) => row.original.color = newColor,
   //     labelId: row.original.id,
-  //     token: '1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf',
+  //     token: apiKey,
   //   }),
   // },
   { accessorKey: 'description', header: 'Description', cell: ({ row }) => row.getValue('description') },
@@ -126,7 +128,7 @@ onMounted(async () => {
                     :endpoint="'/api/label-groups'"
                     :fields="form"
                     :field-map="fieldMap"
-                    :token="'1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf'"
+                    :token="apiKey"
                     :onSuccess="handleSuccess"
                     :onError="handleError"
                   >

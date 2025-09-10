@@ -36,7 +36,9 @@ const total = ref(100)
 const pagination = ref({ pageIndex: 0, pageSize: 10 })
 const table = shallowRef()
 
-const token = '1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf'
+const apiKey = import.meta.env.APP_API_KEY
+
+const token = apiKey;
 
 const buildRequestUrl_v1 = (pageIndex: number, pageSize: number): string => {
   const baseUrl = 'https://jsonplaceholder.typicode.com/posts'

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 // resources/js/pages/Labels.vue
 
+const apiKey = import.meta.env.APP_API_KEY
+
 import { ref, onMounted, watch, h } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { Head } from '@inertiajs/vue3'
@@ -76,7 +78,7 @@ const columns = [
       modelValue: row.original.color,
       'onUpdate:modelValue': (newColor) => row.original.color = newColor,
       labelId: row.original.id,
-      token: '1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf',
+      token: apiKey,
     }),
   },
   { accessorKey: 'description', header: 'Description', cell: ({ row }) => row.getValue('description') },
@@ -113,7 +115,7 @@ onMounted(async () => {
         <CreateElementForm
           :endpoint="'/api/labels'"
           :fields="form"
-          :token="'1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf'"
+          :token="apiKey"
           :onSuccess="handleSuccess"
           :onError="handleError"
         >

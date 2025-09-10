@@ -1,7 +1,12 @@
 <script setup lang="ts">
+
+// resources/js/components/Views/Boards/BoardView copy.vue
+
 import { ref, watch } from 'vue'
 import axios from 'axios'
 import { route } from 'ziggy-js'
+
+const apiKey = import.meta.env.APP_API_KEY
 
 import BoardControls from '@/components/Views/Boards/BoardControls.vue'
 import BoardColumn from '@/components/Views/Boards/BoardColumn.vue'
@@ -71,7 +76,7 @@ watch(labelIds, async (val) => {
 <template>
   <div class="flex flex-col gap-4 px-2 md:px-0">
     <BoardControls
-      :token="'1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf'"
+      :token="apiKey"
       :route-name="routeName"
       :auth-token="authToken"
       @update:label-ids="val => labelIds.value = val"

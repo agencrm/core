@@ -1,11 +1,15 @@
 <script setup lang="ts">
 // resources/js/pages/Flows/FlowIndex.vue
 
+const apiKey = import.meta.env.APP_API_KEY
+
 import { ref, onMounted, watch } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { Head } from '@inertiajs/vue3'
 import DataTable from '@/components/DataTable/DataTable.vue'
 import { Plus, Settings2 } from 'lucide-vue-next'
+
+
 
 import {
   Dialog,
@@ -196,7 +200,7 @@ function toggleDarkMode() {
                 :endpoint="'/api/flows'"
                 :fields="form"
                 :field-map="fieldMap"
-                :token="'1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf'"
+                :token="apiKey"
                 :onSuccess="handleSuccess"
                 :onError="handleError"
               />

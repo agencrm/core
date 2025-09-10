@@ -6,6 +6,9 @@ import DataTable from '@/components/DataTable/DataTable.vue'
 
 import { Plus, Settings2, SlidersHorizontal  } from 'lucide-vue-next';
 
+const apiKey = import.meta.env.APP_API_KEY
+
+
 
 // Components
 import {
@@ -64,7 +67,7 @@ const columns = [
       h(CellEditableFieldLabel, {
         model: 'contact',
         modelId: row.original.id,
-        token: '1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf',
+        token: apiKey,
         value: row.original.label_id,
         labelMap: labelMap.value,
       }),
@@ -113,7 +116,7 @@ const columns = [
                     :endpoint="'/api/labels'"
                     :fields="form"
                     :field-map="fieldMap"
-                    :auth-token="'1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf'"
+                    :auth-token="apiKey"
                     :onSuccess="handleSuccess"
                     :onError="handleError"
                     >

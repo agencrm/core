@@ -7,6 +7,8 @@ import { Head, Link } from '@inertiajs/vue3'
 import DataTable from '@/components/DataTable/DataTable.vue'
 import { Plus, Settings2 } from 'lucide-vue-next'
 
+const apiKey = import.meta.env.APP_API_KEY
+
 import {
   Dialog,
   DialogContent,
@@ -131,7 +133,7 @@ function handleError(err: any) {
                 :endpoint="'/api/flows'"
                 :fields="form"
                 :field-map="fieldMap"
-                :token="'1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf'"
+                :token="apiKey"
                 :onSuccess="handleSuccess"
                 :onError="handleError"
               />

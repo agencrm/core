@@ -2,6 +2,8 @@
 
 // resources/js/pages/settings/Labels.vue
 
+const apiKey = import.meta.env.APP_API_KEY
+
 import { ref, onMounted, watch, h } from 'vue'
 import { Head } from '@inertiajs/vue3';
 import { Plus  } from 'lucide-vue-next';
@@ -116,7 +118,7 @@ const columns = [
         model: 'labels',
         modelId: row.original.id,
         field: 'name',
-        token: '1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf',
+        token: apiKey,
         value: row.original.name,
         mode: 'inline',
         placeholder: 'Untitled',
@@ -132,7 +134,7 @@ const columns = [
         model: 'labels',
         modelId: row.original.id,
         field: 'color',
-            token: '1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf',
+            token: apiKey,
         value: row.original.color,
         mode: 'inline', // or 'popover'
         onUpdateModelValue: (val) => row.original.color = val,
@@ -147,7 +149,7 @@ const columns = [
         field: 'label_group_ids',
         value: row.original.groups.map(g => g.id), // correct prop name if your component expects `value`
         endpoint: '/api/label-groups',
-        token: '1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf',
+        token: apiKey,
         optionLabel: 'name',
         optionValue: 'id',
         'onUpdate:modelValue': (newVal) => {
@@ -185,7 +187,7 @@ onMounted(async () => {
                     :endpoint="'/api/labels'"
                     :fields="form"
                     :field-map="fieldMap"
-                    :auth-token="'1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf'"
+                    :auth-token="apiKey"
                     :onSuccess="handleSuccess"
                     :onError="handleError"
                     >
