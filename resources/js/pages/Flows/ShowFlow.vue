@@ -1,177 +1,260 @@
-<!-- resources/js/pages/Flows/ShowFlow.vue -->
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+// resources/js/pages/Flows/FlowIndex.vue
+
+import { ref, onMounted, watch } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { Head } from '@inertiajs/vue3'
+import DataTable from '@/components/DataTable/DataTable.vue'
+import { Plus, Settings2 } from 'lucide-vue-next'
 
-// Rete v2 (match official example)
-import { NodeEditor, GetSchemes, ClassicPreset } from 'rete'
-import { AreaPlugin, AreaExtensions } from 'rete-area-plugin'
-import { ConnectionPlugin, Presets as ConnectionPresets } from 'rete-connection-plugin'
-import { VuePlugin, Presets as VuePresets, VueArea2D } from 'rete-vue-plugin'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 
-// ----- Types -----
-type Schemes = GetSchemes<
-  ClassicPreset.Node,
-  ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node>
->
-type AreaExtra = VueArea2D<Schemes>
+import CreateElementForm from '@/components/Forms/CreateElement.vue'
 
-// ----- Props -----
-type Flow = {
-  id: number
-  name: string
-  slug?: string | null
-  description?: string | null
-  status?: string | null
-  graph?: Record<string, any> | null
-  created_at?: string
-  updated_at?: string
-}
-const props = defineProps<{ flow: Flow }>()
+// page state
+const breadcrumbs = [{ title: 'Flows', href: '/flows' }]
+const showBoardControls = ref(false)
 
-// ----- Breadcrumbs -----
-const breadcrumbs = [
-  { title: 'Flows', href: '/flows' },
-  { title: props.flow.name || `Flow #${props.flow.id}`, href: `/flows/${props.flow.id}` },
+const form = ref({
+  name: '',
+  description: '',
+})
+
+// fields for the create form
+const fieldMap = [
+  { key: 'name', type: 'text', label: 'Name', placeholder: 'Flow name' },
+  { key: 'description', type: 'text', label: 'Description', placeholder: 'Describe the flow' },
 ]
 
-// ----- Rete instances -----
-const editorEl = ref<HTMLDivElement | null>(null)
-let editor: NodeEditor<Schemes> | null = null
-let area: AreaPlugin<Schemes, AreaExtra> | null = null
-let connection: ConnectionPlugin<Schemes, AreaExtra> | null = null
-let render: VuePlugin<Schemes, AreaExtra> | null = null
+// view state
+const routeKey = `viewMode:/flows`
+const view = ref<'table' | 'board'>('table')
 
-// a simple shared socket
-const socket = new ClassicPreset.Socket('socket')
+onMounted(() => {
+  try {
+    const stored = localStorage.getItem(routeKey)
+    if (stored === 'board' || stored === 'table') view.value = stored
+  } catch {}
+})
+watch(view, val => {
+  try { localStorage.setItem(routeKey, val) } catch {}
+})
 
-// ----- Persistence -----
-let saveTimer: number | undefined
+// flows table columns
+const columns = [
+  { accessorKey: 'name', header: 'Name', cell: ({ row }) => row.getValue('name') },
+  { accessorKey: 'slug', header: 'Slug', cell: ({ row }) => row.getValue('slug') },
+  { accessorKey: 'status', header: 'Status', cell: ({ row }) => row.getValue('status') ?? 'draft' },
+  {
+    accessorKey: 'updated_at',
+    header: 'Updated',
+    cell: ({ row }) => new Date(row.getValue('updated_at')).toLocaleString(),
+  },
+]
 
-async function saveGraphDebounced() {
-  if (saveTimer) window.clearTimeout(saveTimer)
-  saveTimer = window.setTimeout(async () => {
-    if (!editor) return
-    const json = await editor.toJSON()
-    await fetch(`/api/flows/${props.flow.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ graph: json })
-    }).catch(() => {})
-  }, 500)
+function handleSuccess() {
+  // optionally close dialog and reload table here (depends on your DataTable API)
 }
 
-async function manualSave() {
-  if (!editor) return
-  const json = await editor.toJSON()
-  await fetch(`/api/flows/${props.flow.id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ graph: json })
-  })
+function handleError(err: any) {
+  console.error(err)
 }
 
-// ----- Editor lifecycle -----
-async function initEditor() {
-  if (!editorEl.value) return
 
-  editor = new NodeEditor<Schemes>()
-  area = new AreaPlugin<Schemes, AreaExtra>(editorEl.value)
-  connection = new ConnectionPlugin<Schemes, AreaExtra>()
-  render = new VuePlugin<Schemes, AreaExtra>()
+// ---------------------------------------------------------
 
-  // Selection helpers & ordering (from example)
-  AreaExtensions.selectableNodes(area, AreaExtensions.selector(), {
-    accumulating: AreaExtensions.accumulateOnCtrl()
-  })
-  AreaExtensions.simpleNodesOrder(area)
 
-  // Presets
-  render.addPreset(VuePresets.classic.setup())
-  connection.addPreset(ConnectionPresets.classic.setup())
+import { ref } from 'vue'
+import { VueFlow, useVueFlow } from '@vue-flow/core'
+import { Background } from '@vue-flow/background'
+import { ControlButton, Controls } from '@vue-flow/controls'
+import { MiniMap } from '@vue-flow/minimap'
+import { initialEdges, initialNodes } from '@/components/Flow/initial-elements.js'
+import Icon from '@/components/Flow/Icon.vue'
 
-  // Wire plugins
-  editor.use(area)
-  area.use(connection)
-  area.use(render)
+/**
+ * `useVueFlow` provides:
+ * 1. a set of methods to interact with the VueFlow instance (like `fitView`, `setViewport`, `addEdges`, etc)
+ * 2. a set of event-hooks to listen to VueFlow events (like `onInit`, `onNodeDragStop`, `onConnect`, etc)
+ * 3. the internal state of the VueFlow instance (like `nodes`, `edges`, `viewport`, etc)
+ */
+const { onInit, onNodeDragStop, onConnect, addEdges, setViewport, toObject } = useVueFlow()
 
-  // Load existing graph (if any) or start empty
-  const initialGraph = props.flow.graph ?? {}
-  if (Object.keys(initialGraph).length) {
-    await editor.fromJSON(initialGraph as any)
-  } else {
-    // Empty canvas; user can add nodes with the button
-  }
+const nodes = ref(initialNodes)
 
-  AreaExtensions.zoomAt(area, editor.getNodes())
+const edges = ref(initialEdges)
 
-  // Auto-save on structural changes
-  editor.addPipe(ctx => {
-    if (
-      ctx.type === 'nodecreated' ||
-      ctx.type === 'noderemoved' ||
-      ctx.type === 'connectioncreated' ||
-      ctx.type === 'connectionremoved'
-    ) {
-      saveGraphDebounced()
+// our dark mode toggle flag
+const dark = ref(false)
+
+/**
+ * This is a Vue Flow event-hook which can be listened to from anywhere you call the composable, instead of only on the main component
+ * Any event that is available as `@event-name` on the VueFlow component is also available as `onEventName` on the composable and vice versa
+ *
+ * onInit is called when the VueFlow viewport is initialized
+ */
+onInit((vueFlowInstance) => {
+  // instance is the same as the return of `useVueFlow`
+  vueFlowInstance.fitView()
+})
+
+/**
+ * onNodeDragStop is called when a node is done being dragged
+ *
+ * Node drag events provide you with:
+ * 1. the event object
+ * 2. the nodes array (if multiple nodes are dragged)
+ * 3. the node that initiated the drag
+ * 4. any intersections with other nodes
+ */
+onNodeDragStop(({ event, nodes, node }) => {
+  console.log('Node Drag Stop', { event, nodes, node })
+})
+
+/**
+ * onConnect is called when a new connection is created.
+ *
+ * You can add additional properties to your new edge (like a type or label) or block the creation altogether by not calling `addEdges`
+ */
+onConnect((connection) => {
+  addEdges(connection)
+})
+
+/**
+ * To update a node or multiple nodes, you can
+ * 1. Mutate the node objects *if* you're using `v-model`
+ * 2. Use the `updateNode` method (from `useVueFlow`) to update the node(s)
+ * 3. Create a new array of nodes and pass it to the `nodes` ref
+ */
+function updatePos() {
+  nodes.value = nodes.value.map((node) => {
+    return {
+      ...node,
+      position: {
+        x: Math.random() * 400,
+        y: Math.random() * 400,
+      },
     }
-    return ctx
   })
 }
 
-function destroyEditor() {
-  try { area?.destroy() } catch {}
-  editor = null
-  area = null
-  connection = null
-  render = null
+/**
+ * toObject transforms your current graph data to an easily persist-able object
+ */
+function logToObject() {
+  console.log(toObject())
 }
 
-// ----- Actions -----
-async function addNode() {
-  if (!editor || !area) return
-
-  const count = editor.getNodes().length + 1
-  const node = new ClassicPreset.Node(`Node ${count}`)
-  node.addControl('label', new ClassicPreset.InputControl('text', { initial: `hello ${count}` }))
-  node.addInput('in', new ClassicPreset.Input(socket, 'In'))
-  node.addOutput('out', new ClassicPreset.Output(socket, 'Out'))
-
-  await editor.addNode(node)
-  await area.translate(node.id, { x: 240 * (count - 1), y: 0 })
-  saveGraphDebounced()
+/**
+ * Resets the current viewport transformation (zoom & pan)
+ */
+function resetTransform() {
+  setViewport({ x: 0, y: 0, zoom: 1 })
 }
 
-function zoomToFit() {
-  if (!area || !editor) return
-  AreaExtensions.zoomAt(area, editor.getNodes())
+function toggleDarkMode() {
+  dark.value = !dark.value
 }
 
-onMounted(initEditor)
-onBeforeUnmount(destroyEditor)
+
 </script>
 
 <template>
-  <Head :title="`Flow Builder: ${props.flow.name || props.flow.id}`" />
+  <Head title="Flows" />
   <AppLayout :breadcrumbs="breadcrumbs">
-    <div class="flex items-center justify-between p-4 border-b gap-2">
-      <div>
-        <h1 class="text-lg font-semibold">Flow Builder</h1>
-        <p class="text-xs text-muted-foreground">
-          {{ props.flow.name || `Flow #${props.flow.id}` }}
-        </p>
+    <template #view-controls>
+      <div class="flex justify-between items-center px-2 md:px-0">
+        <button
+          @click="showBoardControls = !showBoardControls"
+          class="p-2 rounded hover:bg-accent hover:text-accent-foreground transition"
+          title="Toggle Board Controls"
+        >
+          <Settings2 class="text-muted-foreground" />
+        </button>
       </div>
+    </template>
 
-      <div class="flex items-center gap-2">
-        <button class="rounded border px-3 py-1 text-sm" @click="addNode">Add Node</button>
-        <button class="rounded border px-3 py-1 text-sm" @click="zoomToFit">Zoom to Fit</button>
-        <button class="rounded bg-black text-white px-3 py-1 text-sm" @click="manualSave">Save</button>
-      </div>
-    </div>
+    <template #action-controls>
+      <Dialog>
+        <DialogTrigger>
+          <Plus />
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle class="flex items-center justify-between border-b pb-3">
+              Create A Flow
+            </DialogTitle>
+            <DialogDescription>
+              <CreateElementForm
+                :endpoint="'/api/flows'"
+                :fields="form"
+                :field-map="fieldMap"
+                :token="'1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf'"
+                :onSuccess="handleSuccess"
+                :onError="handleError"
+              />
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+    </template>
 
-    <div class="p-0">
-      <div ref="editorEl" class="w-full" style="height: calc(100vh - 180px);"></div>
+    <div 
+        class="flex flex-col gap-4 p-4 h-svh" 
+    >
+
+        <VueFlow
+            :nodes="nodes"
+            :edges="edges"
+            :class="{ dark }"
+            class="basic-flow h-100"
+            :default-viewport="{ zoom: 1.5 }"
+            :min-zoom="0.2"
+            :max-zoom="4"
+        >
+            <Background pattern-color="#aaa" :gap="16" />
+
+            <MiniMap />
+
+            <Controls position="top-left">
+            <ControlButton title="Reset Transform" @click="resetTransform">
+                <Icon name="reset" />
+            </ControlButton>
+
+            <ControlButton title="Shuffle Node Positions" @click="updatePos">
+                <Icon name="update" />
+            </ControlButton>
+
+            <ControlButton title="Toggle Dark Mode" @click="toggleDarkMode">
+                <Icon v-if="dark" name="sun" />
+                <Icon v-else name="moon" />
+            </ControlButton>
+
+            <ControlButton title="Log `toObject`" @click="logToObject">
+                <Icon name="log" />
+            </ControlButton>
+            </Controls>
+        </VueFlow>
+
+
     </div>
   </AppLayout>
 </template>
+
+
+<style>
+@import '@vue-flow/core/dist/style.css';
+@import '@vue-flow/core/dist/theme-default.css';
+@import '@vue-flow/controls/dist/style.css';
+@import '@vue-flow/minimap/dist/style.css';
+@import '@vue-flow/node-resizer/dist/style.css';
+
+
+</style>
