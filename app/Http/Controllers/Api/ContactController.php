@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\ContactResource;
 
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 use Illuminate\Support\Facades\Log;
 use App\Services\Api\ApiQueryService;
@@ -48,20 +49,37 @@ class ContactController extends Controller
         return new ContactResource(Contact::findOrFail($id));
     }
 
+
+    /**
+     * 
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string',
-            'path' => 'required|string',
-            'mime_type' => 'nullable|string',
-            'size' => 'nullable|integer',
+            'first_name' => ['required', 'string', 'max:255'],      // FIX: required by DB
+            'last_name'  => ['nullable', 'string', 'max:255'],
+            'email'      => ['nullable', 'string', 'email:rfc,dns', 'max:255',
+                Rule::unique('contacts', 'email')->whereNull('deleted_at') // ok if you add soft deletes later
+            ],
+            'label_id'   => ['nullable', 'integer', 'exists:labels,id'],
         ]);
+
+        // Optional normalization
+        if (!empty($validated['email'])) {
+            $validated['email'] = mb_strtolower($validated['email']);
+        }
 
         $contact = Contact::create($validated);
 
-        return new ContactResource($contact);
+        return (new ContactResource($contact))
+            ->response()
+            ->setStatusCode(201);
     }
 
+
+    /**
+     * 
+     */
     public function destroy($id)
     {
         $contact = Contact::findOrFail($id);

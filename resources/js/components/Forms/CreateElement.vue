@@ -3,6 +3,7 @@
 
 import { ref, reactive } from 'vue'
 import { Button } from '@/components/ui/button'
+import { toast } from 'vue-sonner'
 
 import StandaloneCombobox from '@/components/Fields/Standalone/Combobox.vue'
 import StandaloneText from '@/components/Fields/Standalone/Text.vue'
@@ -35,9 +36,22 @@ const props = defineProps<{
 const isSubmitting = ref(false)
 const values = reactive({ ...props.fields })
 
+function firstError(err: any): string | null {
+  if (err?.errors && typeof err.errors === 'object') {
+    const first = Object.values(err.errors)[0]
+    if (Array.isArray(first) && first.length) return first[0] as string
+  }
+  if (typeof err?.message === 'string') return err.message
+  return null
+}
+
 async function handleSubmit() {
   isSubmitting.value = true
   try {
+    if (typeof values.email === 'string') {
+      values.email = values.email.trim().toLowerCase()
+    }
+
     const res = await fetch(props.endpoint, {
       method: 'POST',
       headers: {
@@ -51,15 +65,17 @@ async function handleSubmit() {
     const json = await res.json()
     if (!res.ok) throw json
 
+    toast.success('Saved successfully')
+
     props.onSuccess?.(json)
 
-    // reset fields
     Object.keys(values).forEach((k) => {
       const v = values[k]
       values[k] = Array.isArray(v) ? [] : ''
     })
   } catch (error) {
     props.onError?.(error)
+    toast.error(firstError(error) ?? 'Save failed')
   } finally {
     isSubmitting.value = false
   }

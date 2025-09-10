@@ -8,6 +8,7 @@ import {
   watch,
   watchEffect,
   defineProps,
+  defineExpose, 
 } from 'vue'
 
 import axios from 'axios'
@@ -116,6 +117,51 @@ watch([searchTerm, perPage], () => {
   pagination.value.pageSize = perPage.value
   getPageData(0, perPage.value)
 })
+
+
+// === NEW: util to resync TanStack with our updated data without a fetch
+function syncTableData() {
+  if (!table.value) return
+  table.value.setOptions((prev: any) => ({
+    ...prev,
+    data: data.value,
+    pageCount: Math.ceil(total.value / pagination.value.pageSize),
+  }))
+}
+
+// === NEW: exposed helpers for optimistic updates ===
+function prependRow(row: any) {
+  data.value = [row, ...data.value]
+  total.value = (total.value || 0) + 1
+  // keep the user on the current page; optionally jump to first page:
+  // pagination.value.pageIndex = 0
+  syncTableData()
+}
+
+function appendRow(row: any) {
+  data.value = [...data.value, row]
+  total.value = (total.value || 0) + 1
+  syncTableData()
+}
+
+// Optional helpers if you want them later:
+function updateRow(id: any, patch: Record<string, any>) {
+  const idx = data.value.findIndex(r => r.id === id)
+  if (idx !== -1) {
+    data.value[idx] = { ...data.value[idx], ...patch }
+    syncTableData()
+  }
+}
+function removeRow(id: any) {
+  const before = data.value.length
+  data.value = data.value.filter(r => r.id !== id)
+  if (data.value.length !== before) total.value = Math.max(0, total.value - 1)
+  syncTableData()
+}
+
+// Expose to parent
+defineExpose({ prependRow, appendRow, updateRow, removeRow })
+
 
 </script>
 
