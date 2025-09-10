@@ -111,7 +111,7 @@ function handleError(err: any) {
     <template #action-controls>
       <Dialog>
         <DialogTrigger>
-          <Plus />
+          <Plus class="text-emerald-500"/>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>

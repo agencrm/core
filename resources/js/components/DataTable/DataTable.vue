@@ -81,29 +81,38 @@ async function getPageData(pageIndex: number, pageSize: number) {
   data.value = res.data.data
   total.value = res.data.meta.total
 
-  table.value = useVueTable({
-    data: data.value,
-    columns: props.columns,
-    manualPagination: true,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getExpandedRowModel: getExpandedRowModel(),
+// AFTER (reactive getters)
+table.value = useVueTable({
+  // key change: make data reactive
+  get data() {
+    return data.value
+  },
+  columns: props.columns,
+  manualPagination: true,
+  getCoreRowModel: getCoreRowModel(),
+  getPaginationRowModel: getPaginationRowModel(),
+  getFilteredRowModel: getFilteredRowModel(),
+  getSortedRowModel: getSortedRowModel(),
+  getExpandedRowModel: getExpandedRowModel(),
 
-    pageCount: Math.ceil(total.value / pageSize),
+  // also make pageCount reactive to total/pageSize
+  get pageCount() {
+    return Math.ceil(total.value / pagination.value.pageSize)
+  },
 
-    state: {
-      get pagination() {
-        return pagination.value
-      }
-    },
+  state: {
+    get pagination() {
+      return pagination.value
+    }
+  },
 
-    onPaginationChange: (updater) => {
-      pagination.value =
-        typeof updater === 'function' ? updater(pagination.value) : updater
-    },
-  })
+  onPaginationChange: (updater) => {
+    pagination.value =
+      typeof updater === 'function' ? updater(pagination.value) : updater
+  },
+})
+
+
 }
 
 // Watch pagination
