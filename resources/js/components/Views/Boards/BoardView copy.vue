@@ -6,7 +6,7 @@ import { ref, watch } from 'vue'
 import axios from 'axios'
 import { route } from 'ziggy-js'
 
-const apiKey = import.meta.env.APP_API_KEY
+const apiKey = import.meta.env.VITE_APP_API_KEY
 
 import BoardControls from '@/components/Views/Boards/BoardControls.vue'
 import BoardColumn from '@/components/Views/Boards/BoardColumn.vue'

@@ -33,7 +33,7 @@ const props = defineProps<{
       <CellEditableFieldLabel
         model="contact"
         :model-id="item.id"
-        token="1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf"
+        token="apiKey"
         :value="item.label_id"
         :label-map="labelMap"
       />

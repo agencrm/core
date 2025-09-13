@@ -1,9 +1,9 @@
 <script setup lang="ts">
-// resources/js/pages/Contacts/Index.vue
+// resources/js/pages/Contacts/ContactIndex.vue
 
 import { ref, onMounted, watch, h } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
-import { Head } from '@inertiajs/vue3'
+import { Head, Link } from '@inertiajs/vue3'
 import DataTable from '@/components/DataTable/DataTable.vue'
 import { Plus, Settings2 } from 'lucide-vue-next'
 import {
@@ -16,6 +16,9 @@ import CellEditableFieldLabel from '@/components/Fields/InPlaceEditable/Label.vu
 import { toast } from 'vue-sonner'
 
 const apiKey = import.meta.env.VITE_APP_API_KEY
+
+// console.log(apiKey);
+
 
 const createOpen = ref(false)
 
@@ -42,12 +45,42 @@ watch(view, v => { try { localStorage.setItem(routeKey, v) } catch {} })
 
 // Columns
 const columns = [
-  { accessorKey: 'first_name', header: 'First Name', cell: ({ row }) => row.getValue('first_name') },
-  { accessorKey: 'last_name',  header: 'Last Name',  cell: ({ row }) => row.getValue('last_name')  },
-  { accessorKey: 'email',      header: 'Email',      cell: ({ row }) => row.getValue('email')      },
+  {
+    accessorKey: 'id',
+    header: 'ID',
+    cell: ({ row }) => {
+      const id = row.original.id
+      const href = (typeof route === 'function')
+        ? route('flows.show', id)
+        : `/flows/${id}`
+      return h(Link, { href, class: 'text-blue-600 hover:underline' }, () => String(id))
+    },
+        meta: { 
+      focusable: true,
+     },
+  },
+  { accessorKey: 'first_name', header: 'First Name', cell: ({ row }) => row.getValue('first_name'),
+        meta: { 
+      focusable: true,
+     },
+ },
+  { accessorKey: 'last_name',  header: 'Last Name',  cell: ({ row }) => row.getValue('last_name'),  
+        meta: { 
+      focusable: true,
+     },
+},
+  { accessorKey: 'email',      header: 'Email',      cell: ({ row }) => row.getValue('email'),     
+      meta: { 
+      focusable: true,
+     },
+ },
   {
     accessorKey: 'label_id',
     header: 'Label',
+    meta: { 
+      focusable: true,
+      isFillable: true,
+     },
     cell: ({ row }) =>
       h(CellEditableFieldLabel, {
         model: 'contact',
@@ -140,7 +173,7 @@ function handleError(err: any) {
           endpoint-route="api.contacts.index"
           :columns="columns"
           search-placeholder="Search contacts..."
-          auth-token="apiKey"
+          :auth-token="apiKey"
           v-slot:expand="{ row }"
         >
           <div class="p-2">
@@ -152,7 +185,7 @@ function handleError(err: any) {
       <template v-else>
         <BoardView
           route-name="api.contacts.index"
-          auth-token="apiKey"
+          :auth-token="apiKey"
           class="min-h-[100vh] md:min-h-min"
           :show-board-controls="showBoardControls"
           :label-group-id="1"

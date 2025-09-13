@@ -36,7 +36,7 @@ const total = ref(100)
 const pagination = ref({ pageIndex: 0, pageSize: 10 })
 const table = shallowRef()
 
-const apiKey = import.meta.env.APP_API_KEY
+const apiKey = import.meta.env.VITE_APP_API_KEY
 
 const token = apiKey;
 

@@ -29,6 +29,10 @@ const sidebarNavItems: NavItem[] = [
         title: 'Label Groups',
         href: '/settings/label-groups',
     },
+    {
+        title: 'Users',
+        href: '/settings/users',
+    },
 ];
 
 const page = usePage();

@@ -45,11 +45,6 @@ const mainNavItems: NavItem[] = [
         href: '/messages',
         icon: MessageSquare,
     },
-    {
-        title: 'Users',
-        href: '/users',
-        icon: Users,
-    },
 ];
 
 const footerNavItems: NavItem[] = [

@@ -90,7 +90,7 @@ const columns: ColumnDef<MessageEntry>[] = [
           route-name="api.messages.index"
           :columns="columns"
           search-placeholder="Search messages..."
-          auth-token="1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf"
+          auth-token="apiKey"
           v-slot:expand="{ row }"
         >
           <div class="p-2">

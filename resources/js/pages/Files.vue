@@ -71,7 +71,7 @@ const columns: ColumnDef<FileEntry>[] = [
           route-name="api.files.index"
           :columns="columns"
           search-placeholder="Search files..."
-          auth-token="1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf"
+          auth-token="apiKey"
           v-slot:expand="{ row }"
         >
           <div class="p-2">

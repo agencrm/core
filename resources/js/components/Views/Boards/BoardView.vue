@@ -130,7 +130,7 @@ const columnMapDisplay = computed(() => columnMap.value)
 </script>
 
 <template>
-    <pre class="bg-black text-white text-sm mt-4 p-2 rounded overflow-auto max-h-64">
+    <!-- <pre class="bg-black text-white text-sm mt-4 p-2 rounded overflow-auto max-h-64">
         {{ JSON.stringify(columnMapDisplay, null, 2) }}
     </pre>
 
@@ -139,7 +139,7 @@ const columnMapDisplay = computed(() => columnMap.value)
         class="bg-black text-white text-sm mt-4 p-2 rounded overflow-auto max-h-64"
     >
         {{ JSON.stringify(labelMap, null, 2) }}
-    </pre>
+    </pre> -->
 
     <div class="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 px-2 md:px-0 h-full">
         <BoardControls

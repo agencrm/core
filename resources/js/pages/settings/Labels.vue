@@ -2,7 +2,7 @@
 
 // resources/js/pages/settings/Labels.vue
 
-const apiKey = import.meta.env.APP_API_KEY
+const apiKey = import.meta.env.VITE_APP_API_KEY
 
 import { ref, onMounted, watch, h } from 'vue'
 import { Head } from '@inertiajs/vue3';
