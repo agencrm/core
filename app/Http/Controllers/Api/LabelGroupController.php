@@ -6,56 +6,27 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\LabelGroupResource;
-
-use Illuminate\Support\Facades\Log;
 use App\Services\Api\ApiQueryService;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 use App\Models\LabelGroup;
 
 class LabelGroupController extends Controller
 {
-
-
     /**
-     * 
-     */
-    public function index_V1(Request $request)
-    {
-        return LabelGroupResource::collection(LabelGroup::latest()->paginate(15));
-    }
-
-
-    public function index_V2(Request $request, ApiQueryService $apiQuery)
-    {
-        $query = LabelGroup::latest();
-
-        $result = $apiQuery
-            ->forModel($query)
-            ->searchable(['name'])
-            ->sortable(['name', 'created_at'])
-            ->apply();
-
-        return response()->json([
-            'data' => LabelGroupResource::collection($result['results']),
-            'meta' => $result['meta'],
-        ]);
-    } 
-
-    /**
-     * 
+     * List label groups with search, sort, pagination
      */
     public function index(Request $request, ApiQueryService $apiQuery)
     {
-    
         $query = LabelGroup::latest();
 
         $result = $apiQuery
             ->forModel($query)
-            ->searchable(['name'])
-            ->sortable(['name', 'created_at'])
+            ->searchable(['name', 'slug', 'description'])
+            ->sortable(['name', 'updated_at', 'created_at'])
             ->apply();
 
         return response()->json([
@@ -64,67 +35,92 @@ class LabelGroupController extends Controller
         ]);
     }
 
-
     /**
-     * 
+     * Show a single label group
      */
     public function show($id)
     {
         return new LabelGroupResource(LabelGroup::findOrFail($id));
     }
 
-
     /**
-     * 
+     * Create a new label group
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
+            'name'        => ['required', 'string', 'max:255'],
+            'slug'        => ['nullable', 'string', 'max:255', 'unique:label_groups,slug'],
+            'description' => ['nullable', 'string'],
         ]);
 
-        $validated['slug'] = Str::slug($validated['name']);
-
-        $label = LabelGroup::create($validated);
-
-        return new LabelGroupResource($label);
-    }
-
-
-    /**
-     * 
-     */
-    public function update(Request $request, $id)
-    {
-        $label = LabelGroup::findOrFail($id);
-
-        $validated = $request->validate([
-            'name' => 'sometimes|required|string|max:255',
-            'slug' => 'sometimes|required|string|max:255|unique:label_groups,slug,' . $label->id,
-            'description' => 'nullable|string',
-        ]);
-
-        // If slug is not provided but name is, auto-generate it
-        if (!isset($validated['slug']) && isset($validated['name'])) {
+        if (empty($validated['slug'])) {
             $validated['slug'] = Str::slug($validated['name']);
         }
 
-        $label->update($validated);
+        $labelGroup = LabelGroup::create($validated);
 
-        return new LabelGroupResource($label);
+        return new LabelGroupResource($labelGroup);
     }
 
+    /**
+     * Update an existing label group
+     */
+    public function update(Request $request, $id)
+    {
+        $labelGroup = LabelGroup::findOrFail($id);
+
+        $validated = $request->validate([
+            'name'        => ['sometimes', 'string', 'max:255'],
+            'slug'        => ['sometimes', 'string', 'max:255', Rule::unique('label_groups', 'slug')->ignore($labelGroup->id)],
+            'description' => ['sometimes', 'nullable', 'string'],
+        ]);
+
+        // If slug omitted but name provided, auto-generate from name
+        if (!array_key_exists('slug', $validated) && array_key_exists('name', $validated)) {
+            $validated['slug'] = Str::slug($validated['name']);
+        }
+
+        $labelGroup->update($validated);
+
+        return new LabelGroupResource($labelGroup);
+    }
 
     /**
-     * 
+     * Delete a label group
      */
     public function destroy($id)
     {
-        $label = LabelGroup::findOrFail($id);
-        $label->delete();
+        $labelGroup = LabelGroup::findOrFail($id);
+        $labelGroup->delete();
 
-        return response()->json(['label' => 'LabelGroup deleted']);
+        return response()->json(['label_group' => 'LabelGroup deleted']);
     }
 
+    /**
+     * Legacy: simple paginator (kept for compatibility)
+     */
+    public function index_V1(Request $request)
+    {
+        return LabelGroupResource::collection(LabelGroup::latest()->paginate(15));
+    }
+
+    /**
+     * Legacy: ApiQueryService v2 (kept for compatibility)
+     */
+    public function index_V2(Request $request, ApiQueryService $apiQuery)
+    {
+        $query = LabelGroup::latest();
+
+        $result = $apiQuery
+            ->forModel($query)
+            ->searchable(['name', 'slug', 'description'])
+            ->sortable(['name', 'updated_at', 'created_at'])
+            ->apply();
+
+        return response()->json([
+            'data' => LabelGroupResource::collection($result['results']),
+            'meta' => $result['meta'],
+        ]);
+    }
 }

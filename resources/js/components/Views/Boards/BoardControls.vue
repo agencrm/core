@@ -1,341 +1,182 @@
-<script setup lang="ts">
 
+<script setup lang="ts">
 // resources/js/components/Views/Boards/BoardControls.vue
 
-import { ref, computed, onMounted, watch } from 'vue'
-import axios from 'axios'
-import draggable from 'vuedraggable'
-import { GripVertical, Eraser, Settings2 } from 'lucide-vue-next'  
+import { ref, nextTick } from 'vue'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import BoardViewAttributes from '@/components/Views/Boards/BoardViewAttributes.vue'
 
-const apiKey = import.meta.env.VITE_APP_API_KEY
+import SavedViewsTable from '@/components/Views/SavedViewsTable.vue';
 
+type ViewState = {
+    columnType: string | null
+    rowType: string | null
+    labelSelection: Array<string | number>
+    selectedItems: Array<{ id: number; name: string }>
+}
 
-import {
-Select,
-SelectContent,
-SelectItem,
-SelectTrigger,
-SelectValue,
-} from '@/components/ui/select'
-
-import StandaloneCombobox from '@/components/Fields/Standalone/Combobox.vue'
+type Preset = {
+    id: string
+    name: string
+    createdAt: number
+    updatedAt: number
+    settings: ViewState
+}
 
 const props = defineProps<{
     columnOptions?: { value: string; label: string }[]
     rowOptions?: { value: string; label: string }[]
     token: string
-    endpoint: string
-    optionLabel: string
-    optionValue: string
+    endpoint?: string
+    optionLabel?: string
+    optionValue?: string
+    storageKey?: string   // NEW: namespace for localStorage (optional)
 }>()
 
-const emit = defineEmits(['update:columnType', 'update:rowType', 'update:labelSelection'])
+const emit = defineEmits([
+    'update:columnType',
+    'update:rowType',
+    'update:labelSelection',
+    'update:selectedItems',
+    'update:viewState', // NEW: forward child’s composite state up to BoardView
+])
 
-const STORAGE_KEY = 'board-controls'
-const DRAG_STATE_KEY = 'saved-selected-labels'
+// ---------- Saved Views (localStorage) ----------
+const NS = props.storageKey ?? (typeof window !== 'undefined' ? window.location.pathname : 'default')
+const PRESETS_KEY = `board-view-presets::${NS}`
+const DEFAULT_ID_KEY = `board-view-default-id::${NS}`
 
-const defaultOptions = {
-columns: [
-    { value: 'labels', label: 'Labels' },
-    { value: 'field', label: 'Field' },
-],
-rows: [
-    { value: 'assignee', label: 'Assignee' },
-    { value: 'tag', label: 'Tag' },
-    { value: 'priority', label: 'Priority' },
-],
+const attrsRef = ref<any>(null)  // child expose handle
+const newViewName = ref('')
+const presets = ref<Preset[]>([])
+const defaultId = ref<string | null>(null)
+const latestViewState = ref<ViewState | null>(null) // keeps in sync with child via @update:viewState
+
+function loadPresets(): Preset[] {
+    try { return JSON.parse(localStorage.getItem(PRESETS_KEY) || '[]') } catch { return [] }
+}
+function savePresets(list: Preset[]) {
+    localStorage.setItem(PRESETS_KEY, JSON.stringify(list))
+}
+function loadDefaultId(): string | null {
+    return localStorage.getItem(DEFAULT_ID_KEY)
+}
+function saveDefaultId(id: string | null) {
+    if (id) localStorage.setItem(DEFAULT_ID_KEY, id)
+    else localStorage.removeItem(DEFAULT_ID_KEY)
 }
 
-const columnSelectOptions = computed(() => props.columnOptions ?? defaultOptions.columns)
-const rowSelectOptions = computed(() => props.rowOptions ?? defaultOptions.rows)
-
-const columnType = ref<string | null>(null)
-const rowType = ref<string | null>(null)
-const labelSelection = ref<Array<string | number>>([])
-
-const labelGroupMap = ref<Record<number, { id: number; name: string }>>({})
-const allLabels = ref<Array<{ id: number; name: string; group_id: number }>>([])
-
-const selectedLabelsByGroup = ref<Record<string, any[]>>({})
-
-// 🧠 Now this is a COMPUTED property, not a ref
-const availableLabelsByGroup = computed(() => {
-const selectedIds = new Set(
-    Object.values(selectedLabelsByGroup.value).flat().map(label => label.id)
-)
-const result: Record<string, any[]> = {}
-
-for (const label of allLabels.value) {
-    const gid = String(label.group_id)
-    if (selectedIds.has(label.id)) continue
-    if (!result[gid]) result[gid] = []
-    result[gid].push(label)
+function createPreset(name: string, settings: ViewState) {
+    const id = (crypto as any)?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+    const now = Date.now()
+    const p: Preset = { id, name, createdAt: now, updatedAt: now, settings }
+    presets.value = [...presets.value, p]
+    savePresets(presets.value)
+    return p
 }
-
-return result
-})
-
-watch(selectedLabelsByGroup, (val) => {
-localStorage.setItem(DRAG_STATE_KEY, JSON.stringify(val))
-}, { deep: true })
-
-onMounted(() => {
-try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
-    columnType.value = saved.columnType ?? null
-    rowType.value = saved.rowType ?? null
-    labelSelection.value = saved.labelSelection ?? []
-
-    const stored = localStorage.getItem(DRAG_STATE_KEY)
-    if (stored) {
-    selectedLabelsByGroup.value = JSON.parse(stored)
-    }
-} catch (e) {
-    console.warn('[BoardControls] Invalid localStorage JSON')
-}
-
-emit('update:columnType', columnType.value)
-emit('update:rowType', rowType.value === '__none__' ? null : rowType.value)
-emit('update:labelSelection', labelSelection.value)
-})
-
-watch([columnType, rowType, labelSelection], ([col, row, labels]) => {
-localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify({ columnType: col, rowType: row, labelSelection: labels })
-)
-emit('update:columnType', col)
-emit('update:rowType', row === '__none__' ? null : row)
-emit('update:labelSelection', labels)
-})
-
-watch(labelSelection, () => {
-if (columnType.value === 'labels' && labelSelection.value.length) {
-    fetchLabelsForGroups()
-}
-})
-
-function handleLabelUpdate(val: string[] | number[]) {
-labelSelection.value = val
-}
-
-async function fetchLabelsForGroups() {
-    const groupIds = labelSelection.value
-    const url = '/api/labels'
-
-    const queryString = new URLSearchParams()
-    groupIds.forEach(id => queryString.append('group_ids[]', String(id)))
-    const fullUrl = `${url}?${queryString.toString()}`
-    console.log('[fetchLabelsForGroups] FINAL URL:', fullUrl)
-
-    try {
-        const res = await axios.get(url, {
-        headers: { Authorization: `Bearer ${props.token}` },
-        params: { group_ids: groupIds },
-        })
-
-        const labels = (res.data.data ?? []).flatMap((label: any) =>
-            (label.groups ?? []).map((group: any) => ({
-                id: label.id,
-                name: label.name,
-                group_id: String(group.id),
-            }))
-        )
-
-        allLabels.value = labels
-        allItems.value = labels.map(label => ({ id: label.id, name: label.name, group_id: label.group_id }))
-        syncAvailable()
-
-        labelGroupMap.value = Object.fromEntries(
-        (res.data.data ?? [])
-            .flatMap((label: any) => label.groups ?? [])
-            .map((group: any) => [group.id, group])
-        )
-
-        const selectedRaw = JSON.parse(localStorage.getItem(DRAG_STATE_KEY) || '{}')
-        selectedLabelsByGroup.value = {}
-        for (const [gid, list] of Object.entries(selectedRaw)) {
-        selectedLabelsByGroup.value[gid] = list
-        }
-    } catch (err) {
-        console.error('[fetchLabelsForGroups] ERROR:', err)
+function deletePreset(id: string) {
+    presets.value = presets.value.filter(p => p.id !== id)
+    savePresets(presets.value)
+    if (defaultId.value === id) {
+        defaultId.value = null
+        saveDefaultId(null)
     }
 }
-
-
-import { GripVertical } from 'lucide-vue-next'
-
-const STORAGE_KEY_2 = 'label-drag-selected'
-
-// Initial pool of all labels
-const allItems = ref<Array<{ id: number; name: string; group_id?: string }>>([])
-
-
-const availableItems = ref<Array<{ id: number; name: string }>>([])
-const selectedItems = ref<Array<{ id: number; name: string }>>([])
-
-// For styling ghost while dragging
-const draggingItemId = ref<number | null>(null)
-function handleStart(e: any) {
-    draggingItemId.value = e.item?.__draggable_context?.element?.id ?? null
+function applyPreset(p: Preset) {
+    // Push settings down into the child via exposed method
+    attrsRef.value?.applyPreset?.(p.settings)
 }
-function handleEnd() {
-    draggingItemId.value = null
+function setDefaultPreset(id: string) {
+    defaultId.value = id
+    saveDefaultId(id)
 }
 
-// Save selected to localStorage
-watch(selectedItems, (val) => {
-    localStorage.setItem(STORAGE_KEY_2, JSON.stringify(val))
-    syncAvailable()
-}, { deep: true })
-
-// Sync available = allItems - selectedItems
-function syncAvailable() {
-    const selectedIds = new Set(selectedItems.value.map(i => i.id))
-    availableItems.value = allItems.value.filter(i => !selectedIds.has(i.id))
+function handleSaveCurrent() {
+    if (!latestViewState.value) return
+    const name = (newViewName.value || '').trim()
+    if (!name) return
+    createPreset(name, latestViewState.value)
+    newViewName.value = ''
 }
 
-// Load from localStorage
-onMounted(() => {
-    try {
-        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY_2) || '[]')
-        selectedItems.value = saved
-    } catch {
-        selectedItems.value = []
-    }
-    syncAvailable()
+// Init
+presets.value = loadPresets()
+defaultId.value = loadDefaultId()
+
+// If there is a default preset, apply it once child is mounted
+nextTick(() => {
+    if (!defaultId.value) return
+    const p = presets.value.find(x => x.id === defaultId.value)
+    if (p) applyPreset(p)
 })
-
-//
-function clearSelectedItems() {
-    localStorage.removeItem(STORAGE_KEY_2)
-    selectedItems.value = []
-    syncAvailable()
-}
-
-
 </script>
 
 <template>
+    <div class="relative flex-none shrink-0 self-start w-full md:w-[20rem] rounded-xl border border-sidebar-border/70 dark:border-sidebar-border p-4">
+        <Tabs default-value="viewControls">
+            <TabsList class="grid w-full grid-cols-2">
+                <TabsTrigger value="viewControls">View Controls</TabsTrigger>
+                <TabsTrigger value="savedViews">Saved Views</TabsTrigger>
+            </TabsList>
 
-    <div class="relative min-h-[100vh] flex-1 rounded-xl border border-sidebar-border/70 dark:border-sidebar-border md:min-h-min p-4">
-        <div class="flex flex-col gap-4">
-            <label class="text-sm font-medium">Columns</label>
-            <div class="flex gap-4">
-                <!-- Controls -->
-                <div class="w-1/4">
-                    <div class="flex flex-col gap-1">
-                        <label class="text-sm font-medium">Group By Type</label>
-                        <Select v-model="columnType">
-                            <SelectTrigger class="w-[200px]">
-                            <SelectValue placeholder="Select column type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                            <SelectItem
-                                v-for="opt in columnSelectOptions"
-                                :key="opt.value"
-                                :value="opt.value"
-                            >
-                                {{ opt.label }}
-                            </SelectItem>
-                            </SelectContent>
-                        </Select>
+            <TabsContent value="viewControls">
+                <BoardViewAttributes
+                    ref="attrsRef"
+                    :column-options="props.columnOptions"
+                    :row-options="props.rowOptions"
+                    :token="props.token"
+                    :endpoint="props.endpoint"
+                    :option-label="props.optionLabel"
+                    :option-value="props.optionValue"
+                    :storage-key="props.storageKey"
+                    @update:columnType="(v) => emit('update:columnType', v)"
+                    @update:rowType="(v) => emit('update:rowType', v)"
+                    @update:labelSelection="(v) => emit('update:labelSelection', v)"
+                    @update:selectedItems="(v) => emit('update:selectedItems', v)"
+                    @update:viewState="(v) => { latestViewState = v; emit('update:viewState', v) }"
+                />
+            </TabsContent>
+
+            <TabsContent value="savedViews">
+                <div class="flex flex-col gap-4 mt-4">
+                    <div class="flex items-center gap-2">
+                        <Input v-model="newViewName" placeholder="View name" class="flex-1" />
+                        <Button variant="default" @click="handleSaveCurrent">Save current</Button>
                     </div>
 
-                    <div class="flex flex-col gap-1 mt-4">
-                    <label class="text-sm font-medium">Label Group(s)</label>
-                    <StandaloneCombobox
-                        :model-value="labelSelection"
-                        @update:modelValue="handleLabelUpdate"
-                        :token="props.token"
-                        :endpoint="'/api/label-groups'"
-                        :option-label="'name'"
-                        :option-value="'id'"
-                        :multiple="true"
-                        placeholder="Select group(s)"
-                    />
+                    <div v-if="presets.length === 0" class="text-sm text-muted-foreground">
+                        No saved views yet.
                     </div>
-                </div>
 
-                    <!-- <pre
-
-        class="bg-black text-white text-sm mt-4 p-2 rounded overflow-auto max-h-64"
-    >
-        {{ JSON.stringify(props.token, null, 2) }}
-    </pre> -->
-
-
-
-                <!-- Drag UI -->
-                <div class="w-3/4">
-                    <div v-if="columnType === 'labels' && labelSelection.length" class="flex gap-4">
-
-                        <!-- AVAILABLE COLUMN -->
-                        <div class="h-full w-1/2  flex flex-col flex-shrink-0 snap-center rounded-lg border bg-primary-foreground text-card-foreground shadow-sm">
-                            <div class="p-4 font-semibold border-b-2 flex items-center">
-                                <span class="mr-auto">Available</span>
+                    <div v-else class="flex flex-col gap-2">
+                        <div
+                            v-for="p in presets"
+                            :key="p.id"
+                            class="flex items-center justify-between rounded border px-3 py-2"
+                        >
+                            <div class="flex flex-col">
+                                <span class="text-sm font-medium">{{ p.name }}</span>
+                                <span class="text-xs text-muted-foreground">Updated {{ new Date(p.updatedAt).toLocaleString() }}</span>
                             </div>
-                            <div class="p-2">
-                                <draggable
-                                v-model="availableItems"
-                                :group="'labels'"
-                                item-key="id"
-                                handle=".drag-handle"
-                                class="flex flex-col gap-2"
-                                @start="handleStart"
-                                @end="handleEnd"
-                                ghost-class="drag-ghost"
-                                animation="200"
+                            <div class="flex items-center gap-2">
+                                <Button size="sm" variant="secondary" @click="applyPreset(p)">Apply</Button>
+                                <Button
+                                    size="sm"
+                                    :variant="defaultId === p.id ? 'default' : 'outline'"
+                                    @click="setDefaultPreset(p.id)"
+                                    title="Set as default"
                                 >
-                                <template #item="{ element }">
-                                    <div class="flex items-center gap-2 p-2 border rounded bg-muted text-sm"
-                                        :class="{ 'ring-2 ring-indigo-500': draggingItemId === element.id }">
-                                    <GripVertical class="w-4 h-4 drag-handle text-muted-foreground" />
-                                    {{ element.name }}
-                                    </div>
-                                </template>
-                                </draggable>
-                            </div>
-                        </div>
-
-                        <!-- SELECTED COLUMN -->
-                        <div class="h-full w-1/2 flex flex-col flex-shrink-0 snap-center rounded-lg border bg-primary-foreground text-card-foreground shadow-sm">
-                            <div class="p-4 font-semibold border-b-2 flex items-center">
-                                <span class="mr-auto">Selected</span>
-
-                                    <button
-                                        @click="clearSelectedItems"
-                                        class="text-muted-foreground hover:text-foreground p-1 ml-2 transition-colors"
-                                        title="Clear selected items"
-                                    >
-                                        <Eraser class="w-5 h-5" />
-                                    </button>
-                            </div>
-                            <div class="p-2">
-                                <draggable
-                                v-model="selectedItems"
-                                :group="'labels'"
-                                item-key="id"
-                                handle=".drag-handle"
-                                class="flex flex-col gap-2"
-                                @start="handleStart"
-                                @end="handleEnd"
-                                ghost-class="drag-ghost"
-                                animation="200"
-                                >
-                                <template #item="{ element }">
-                                    <div class="flex items-center gap-2 p-2 border rounded bg-muted text-sm"
-                                        :class="{ 'ring-2 ring-indigo-500': draggingItemId === element.id }">
-                                    <GripVertical class="w-4 h-4 drag-handle text-muted-foreground" />
-                                    {{ element.name }}
-                                    </div>
-                                </template>
-                                </draggable>
+                                    Default
+                                </Button>
+                                <Button size="sm" variant="destructive" @click="deletePreset(p.id)">Delete</Button>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
+                <SavedViewsTable />
+            </TabsContent>
+        </Tabs>
     </div>
 </template>
