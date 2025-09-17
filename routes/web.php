@@ -7,6 +7,7 @@ use Inertia\Inertia;
 
 use App\Http\Controllers\Web\FlowController;
 use App\Http\Controllers\Web\UserController;
+use App\Http\Controllers\Web\WebhookController;
 use App\Http\Controllers\Web\ContactController;
 
 Route::get('/', function () {
@@ -47,10 +48,21 @@ Route::prefix('flows')->name('flows.')->group(function () {
 
 // Settings
 Route::prefix('settings')->name('settings.')->group(function () {
+
+    // Users
     Route::prefix('users')->name('users.')->group(function () {
         Route::get('/', [UserController::class, 'index'])->name('index'); 
         Route::get('/{id}', [UserController::class, 'show'])->name('show');
     });
+
+    // Webhooks
+    Route::prefix('webhooks')->name('webhooks.')->group(function () {
+        //Route::get('/', [UserController::class, 'index'])->name('index'); 
+        Route::get('/hits', [WebhookController::class, 'hits'])->name('hits'); 
+        // Route::get('/{id}', [UserController::class, 'show'])->name('show');
+    });
+
+
 });
 
 

@@ -149,7 +149,7 @@ onMounted(async () => {
                 endpoint-route="api.label-groups.index"
                 :columns="columns"
                 search-placeholder="Search labels..."
-                auth-token="1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf"
+                :auth-token="apiKey"
                 v-slot:expand="{ row }"
               >
                 <div class="p-2">

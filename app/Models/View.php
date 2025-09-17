@@ -7,6 +7,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use InvalidArgumentException;
 
 class View extends Model
 {
@@ -29,6 +30,25 @@ class View extends Model
         return $this->morphTo();
     }
 
+    // Hard guards at model level for extra safety.
+    protected static function booted(): void
+    {
+        static::saving(function (self $model) {
+            // name: required, trimmed, non-empty
+            $name = trim((string)($model->name ?? ''));
+            if ($name === '') {
+                throw new InvalidArgumentException('View name cannot be empty.');
+            }
+            $model->name = $name;
+
+            // view_type: required and must be allowed
+            $allowed = ['board', 'table', 'gallery'];
+            if (!in_array($model->view_type, $allowed, true)) {
+                throw new InvalidArgumentException('Invalid view_type.');
+            }
+        });
+    }
+
     // Convenience helpers
     public function getAttr(string $key, $default = null)
     {
@@ -46,7 +66,7 @@ class View extends Model
             $payload['value_boolean'] = $value;
             $payload['value_json'] = $value;
         } elseif (is_numeric($value)) {
-            $payload['value_number'] = $value;
+            $payload['value_number'] = $value + 0;
             $payload['value_json'] = $value + 0;
         } elseif (is_string($value)) {
             $payload['value_string'] = $value;

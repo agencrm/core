@@ -160,7 +160,7 @@ function handleError(err: any) {
                 endpoint-route="api.users.index"
                 :columns="columns"
                 search-placeholder="Search users..."
-                auth-token="1|LgRGb6npouVszXCZDJcpGIVe6CVKS2CjhOBt1figbf15decf"
+                :auth-token="apiKey"
                 v-slot:expand="{ row }"
             >
             <div class="p-2">

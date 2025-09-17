@@ -31,6 +31,8 @@ const props = defineProps<{
   token?: string
   onSuccess?: (response: any) => void
   onError?: (error: any) => void
+  // NEW: optional validator; return a string to block submit & show error
+  beforeSubmit?: (values: Record<string, any>) => string | null | undefined
 }>()
 
 const isSubmitting = ref(false)
@@ -46,6 +48,15 @@ function firstError(err: any): string | null {
 }
 
 async function handleSubmit() {
+  // NEW: client-side guard before we touch the network
+  if (typeof props.beforeSubmit === 'function') {
+    const maybeErr = props.beforeSubmit(values)
+    if (typeof maybeErr === 'string' && maybeErr.trim().length) {
+      toast.error(maybeErr)
+      return
+    }
+  }
+
   isSubmitting.value = true
   try {
     if (typeof values.email === 'string') {
@@ -66,7 +77,6 @@ async function handleSubmit() {
     if (!res.ok) throw json
 
     toast.success('Saved successfully')
-
     props.onSuccess?.(json)
 
     Object.keys(values).forEach((k) => {
@@ -111,6 +121,7 @@ async function handleSubmit() {
         type="text"
         class="mt-1 block w-full rounded-md border px-3 py-2 text-sm shadow-sm"
         :placeholder="field.placeholder || `Enter ${field.label || field.key}`"
+        v-bind="field.attributes"
       />
     </div>
 

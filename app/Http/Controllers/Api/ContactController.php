@@ -55,11 +55,18 @@ class ContactController extends Controller
      */
     public function store(Request $request)
     {
+        // Use DNS checks only in production to avoid local/test payload failures (e.g. example.com)
+        $emailRule = app()->environment('production') ? 'email:rfc,dns' : 'email:rfc';
+
         $validated = $request->validate([
-            'first_name' => ['required', 'string', 'max:255'],      // FIX: required by DB
+            'first_name' => ['nullable', 'string', 'max:255'],      // FIX: required by DB
             'last_name'  => ['nullable', 'string', 'max:255'],
-            'email'      => ['nullable', 'string', 'email:rfc,dns', 'max:255',
-                Rule::unique('contacts', 'email')->whereNull('deleted_at') // ok if you add soft deletes later
+            'email'      => [
+                'nullable',
+                'string',
+                $emailRule,
+                'max:255',
+                Rule::unique('contacts', 'email')->whereNull('deleted_at'), // ok if you add soft deletes later
             ],
             'label_id'   => ['nullable', 'integer', 'exists:labels,id'],
         ]);

@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\ViewResource;
 use App\Models\View;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use App\Services\Api\ApiQueryService;
 
@@ -15,17 +16,13 @@ class ViewController extends Controller
 {
     /**
      * GET /api/views
-     * - Uses ApiQueryService (search/sort/paginate)
-     * - Returns { data, meta } where data is a ViewResource collection
      */
     public function index(Request $request, ApiQueryService $apiQuery)
     {
         $userId = $request->user()->id;
 
-        // Base scope: only the owner’s views
         $query = View::query()
             ->where('created_by', $userId)
-            // Preserve your existing filters
             ->when($request->filled('view_type'), fn ($q) =>
                 $q->where('view_type', $request->string('view_type'))
             )
@@ -37,11 +34,10 @@ class ViewController extends Controller
                 }
             );
 
-        // Apply generic API query features
         $result = $apiQuery
             ->forModel($query)
-            ->searchable(['name'])                 // tweak if you want more fields
-            ->sortable(['name', 'created_at'])     // tweak sortables as needed
+            ->searchable(['name'])
+            ->sortable(['name', 'created_at'])
             ->apply();
 
         return response()->json([
@@ -63,20 +59,37 @@ class ViewController extends Controller
 
     /**
      * POST /api/views
+     * Require: non-empty name, valid view_type, non-empty attributes with at least one meaningful key/value.
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'name'          => ['nullable', 'string', 'max:255'],
+        $validator = Validator::make($request->all(), [
+            'name'          => ['required', 'string', 'max:255'],
             'view_type'     => ['required', 'string', Rule::in(['board', 'table', 'gallery'])],
             'viewable_type' => ['nullable', 'string', 'max:255'],
             'viewable_id'   => ['nullable', 'integer'],
             'is_default'    => ['sometimes', 'boolean'],
-            'attributes'    => ['sometimes', 'array'], // EAV map
+            'attributes'    => ['required', 'array', 'min:1'],
         ]);
 
+        // Attributes must be "meaningful": at least one of these must be present and non-empty.
+        $validator->after(function ($v) use ($request) {
+            $attrs = $request->input('attributes', []);
+            $hasMeaningful =
+                array_key_exists('group_by_type', $attrs) && $attrs['group_by_type'] !== null && $attrs['group_by_type'] !== '' ||
+                (isset($attrs['row_type']) && $attrs['row_type'] !== null && $attrs['row_type'] !== '') ||
+                (!empty($attrs['label_groups']) && is_array($attrs['label_groups'])) ||
+                (!empty($attrs['selected_items']) && is_array($attrs['selected_items']));
+
+            if (!$hasMeaningful) {
+                $v->errors()->add('attributes', 'Attributes must include at least one of: group_by_type, row_type, non-empty label_groups, or non-empty selected_items.');
+            }
+        });
+
+        $validated = $validator->validate();
+
         $view = View::create([
-            'name'          => $validated['name'] ?? null,
+            'name'          => trim($validated['name']),
             'view_type'     => $validated['view_type'],
             'created_by'    => $request->user()->id,
             'viewable_type' => $validated['viewable_type'] ?? null,
@@ -84,7 +97,7 @@ class ViewController extends Controller
             'is_default'    => (bool)($validated['is_default'] ?? false),
         ]);
 
-        foreach (($validated['attributes'] ?? []) as $k => $v) {
+        foreach ($validated['attributes'] as $k => $v) {
             $view->setAttr($k, $v);
         }
 
@@ -95,20 +108,43 @@ class ViewController extends Controller
 
     /**
      * PUT/PATCH /api/views/{id}
+     * If fields are present, enforce same non-empty rules.
      */
     public function update(Request $request, $id)
     {
         $view = View::with('attributes')->findOrFail($id);
         $this->authorizeOwner($view);
 
-        $validated = $request->validate([
-            'name'          => ['sometimes', 'nullable', 'string', 'max:255'],
-            'view_type'     => ['sometimes', 'string', Rule::in(['board', 'table', 'gallery'])],
+        $validator = Validator::make($request->all(), [
+            'name'          => ['sometimes', 'required', 'string', 'max:255'],
+            'view_type'     => ['sometimes', 'required', 'string', Rule::in(['board', 'table', 'gallery'])],
             'viewable_type' => ['sometimes', 'nullable', 'string', 'max:255'],
             'viewable_id'   => ['sometimes', 'nullable', 'integer'],
             'is_default'    => ['sometimes', 'boolean'],
-            'attributes'    => ['sometimes', 'array'],
+            'attributes'    => ['sometimes', 'required', 'array', 'min:1'],
         ]);
+
+        // If attributes given, enforce "meaningful"
+        $validator->after(function ($v) use ($request) {
+            if ($request->has('attributes')) {
+                $attrs = $request->input('attributes', []);
+                $hasMeaningful =
+                    array_key_exists('group_by_type', $attrs) && $attrs['group_by_type'] !== null && $attrs['group_by_type'] !== '' ||
+                    (isset($attrs['row_type']) && $attrs['row_type'] !== null && $attrs['row_type'] !== '') ||
+                    (!empty($attrs['label_groups']) && is_array($attrs['label_groups'])) ||
+                    (!empty($attrs['selected_items']) && is_array($attrs['selected_items']));
+                if (!$hasMeaningful) {
+                    $v->errors()->add('attributes', 'Attributes must include at least one of: group_by_type, row_type, non-empty label_groups, or non-empty selected_items.');
+                }
+            }
+        });
+
+        $validated = $validator->validate();
+
+        // Trim name if present
+        if (array_key_exists('name', $validated)) {
+            $validated['name'] = trim($validated['name']);
+        }
 
         $view->fill($validated)->save();
 

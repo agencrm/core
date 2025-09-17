@@ -33,6 +33,10 @@ const sidebarNavItems: NavItem[] = [
         title: 'Users',
         href: '/settings/users',
     },
+    {
+        title: 'Webhooks',
+        href: '/settings/webhooks/hits',
+    },
 ];
 
 const page = usePage();

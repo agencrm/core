@@ -149,6 +149,19 @@ watch([selectedColumnLabels, columnType, rowType, latestViewState], () => {
 </script>
 
 <template>
+
+
+    <!-- <pre class="bg-black text-white text-sm mt-4 p-2 rounded overflow-auto max-h-64">
+        {{ JSON.stringify(columnMapDisplay, null, 2) }}
+    </pre>
+
+    <pre
+        v-if="Object.keys(labelMap).length"
+        class="bg-black text-white text-sm mt-4 p-2 rounded overflow-auto max-h-64"
+    >
+        {{ JSON.stringify(labelMap, null, 2) }}
+    </pre> -->
+
     <div class="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 px-2 md:px-0 h-full">
         <BoardControls
             v-if="props.showBoardControls"

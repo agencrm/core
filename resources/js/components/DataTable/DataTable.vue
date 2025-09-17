@@ -10,6 +10,7 @@ import {
   defineExpose,
   onMounted,
   onBeforeUnmount,
+  computed,
 } from 'vue'
 
 import axios from 'axios'
@@ -43,7 +44,14 @@ const props = defineProps<{
     value: any
     rows: any[]
   }) => Promise<void> | void
+  showExpandColumn?: boolean   // NEW: adds a leading toggle column (default true)
 }>()
+
+const showExpandColumn = computed(() => props.showExpandColumn !== false)
+
+const collapsibleColumn = computed(() => {
+  return (props.columns as any[]).find(c => c?.meta?.collapsible)
+})
 
 // Data + state
 const data = ref<any[]>([])
@@ -415,69 +423,67 @@ onBeforeUnmount(() => {
           </TableRow>
         </TableHeader>
 
-        <TableBody>
-          <TableRow
-            v-for="(row, rowIndex) in table.getRowModel().rows"
-            :key="row.id"
-            :data-row-index="rowIndex" 
-          >
-<TableCell
-  v-for="cell in row.getVisibleCells()"
-  :key="cell.id"
-  class="relative cursor-default p-2 border border-border"
-  :data-col-id="cell.column.id"
-  :class="[
-    // keep the real border 1px — no border-2 anywhere
-    // selection tint only (no borders here; borders are drawn by the overlay below)
-    isCellSelected(rowIndex, cell.column.id) ? 'bg-emerald-500/10' : '',
-  ]"
-  @mousedown.stop="handleCellMouseDown($event, rowIndex, cell.column.id, isCellFocusable(cell))"
->
-  <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
+     <TableBody>
+          <template v-for="(row, rowIndex) in table.getRowModel().rows" :key="row.id">
+            <!-- Main data row -->
+            <TableRow :data-row-index="rowIndex">
+              <TableCell
+                v-for="cell in row.getVisibleCells()"
+                :key="cell.id"
+                class="relative cursor-default p-2 border border-border"
+                :data-col-id="cell.column.id"
+                :class="[ isCellSelected(rowIndex, cell.column.id) ? 'bg-emerald-500/10' : '' ]"
+                @mousedown.stop="handleCellMouseDown($event, rowIndex, cell.column.id, isCellFocusable(cell))"
+              >
+                <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
 
-  <!-- Selection outline overlay (1px emerald, doesn’t affect layout) -->
-<span
-  v-if="isCellSelected(rowIndex, cell.column.id)"
-  class="pointer-events-none absolute inset-0 z-10 border-emerald-600"
-  :class="[
-    // edges for the contiguous selection
-    'border-l border-r',
-    isSelectionStart(rowIndex, cell.column.id) ? 'border-t' : '',
-    isSelectionEnd(rowIndex, cell.column.id)   ? 'border-b' : '',
-    // style: dashed during drag, solid on release
-    isDragging ? 'border-dashed' : 'border-solid'
-  ]"
-/>
+                <!-- selection/focus/handle overlays you already have -->
+                <span
+                  v-if="isCellSelected(rowIndex, cell.column.id)"
+                  class="pointer-events-none absolute inset-0 z-10 border-emerald-600"
+                  :class="[
+                    'border-l border-r',
+                    isSelectionStart(rowIndex, cell.column.id) ? 'border-t' : '',
+                    isSelectionEnd(rowIndex, cell.column.id)   ? 'border-b' : '',
+                    isDragging ? 'border-dashed' : 'border-solid'
+                  ]"
+                />
+                <span
+                  v-if="(cell?.column?.columnDef?.meta as any)?.focusable
+                        && focusedCell.rowIndex === rowIndex
+                        && focusedCell.colId === cell.column.id
+                        && selectedCells.size <= 1"
+                  class="pointer-events-none absolute inset-0 z-20 ring-2 ring-emerald-600 ring-offset-0"
+                />
+                <span
+                  v-if="isCellFocusable(cell)
+                        && isCellFillable(cell)
+                        && (
+                             (isCellSelected(rowIndex, cell.column.id) && isSelectionEnd(rowIndex, cell.column.id))
+                             || (selectedCells.size === 0 && isCellFocused(rowIndex, cell.column.id))
+                           )"
+                  class="fill-handle absolute bottom-0 right-0 w-2 h-2 translate-x-1/2 translate-y-1/2
+                         rounded-sm border-2 border-emerald-600 bg-background cursor-crosshair z-30"
+                  @mousedown.stop.prevent="onHandleMouseDown($event, rowIndex, cell.column.id)"
+                />
+              </TableCell>
+            </TableRow>
 
-  <!-- Focus overlay (thicker emerald) shown only when focusable AND not multi-select -->
-  <span
-    v-if="(cell?.column?.columnDef?.meta as any)?.focusable
-          && focusedCell.rowIndex === rowIndex
-          && focusedCell.colId === cell.column.id
-          && selectedCells.size <= 1"
-    class="pointer-events-none absolute inset-0 z-20 ring-2 ring-emerald-600 ring-offset-0"
-  />
-
-  <!-- Corner handle (clickable) -->
-<!-- Corner handle (only on the last cell of the current selection in this column) -->
-<span
-  v-if="isCellFocusable(cell)
-        && isCellFillable(cell)
-        && (
-             (isCellSelected(rowIndex, cell.column.id) && isSelectionEnd(rowIndex, cell.column.id))
-             || (selectedCells.size === 0 && isCellFocused(rowIndex, cell.column.id))
-           )"
-  class="fill-handle absolute bottom-0 right-0 w-2 h-2 translate-x-1/2 translate-y-1/2
-         rounded-sm border-2 border-emerald-600 bg-background cursor-crosshair z-30"
-  @mousedown.stop.prevent="onHandleMouseDown($event, rowIndex, cell.column.id)"
-/>
-
-
-</TableCell>
-
-
-          </TableRow>
+            <!-- Expanded detail ROW (owned by whichever column has meta.collapsible) -->
+            <TableRow v-if="row.getIsExpanded() && collapsibleColumn">
+              <TableCell
+                :colspan="row.getVisibleCells().length"
+                class="bg-muted/30 p-0"
+              >
+                <!-- Call the column's renderCollapse(row) -->
+                <component
+                  :is="collapsibleColumn.meta.renderCollapse ? { render: () => collapsibleColumn.meta.renderCollapse(row) } : 'div'"
+                />
+              </TableCell>
+            </TableRow>
+          </template>
         </TableBody>
+
       </Table>
     </div>
 

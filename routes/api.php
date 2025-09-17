@@ -21,11 +21,15 @@ use App\Http\Controllers\Api\LabelController;
 use App\Http\Controllers\Api\LabelGroupController;
 use App\Http\Controllers\Api\FlowController;
 use App\Http\Controllers\Api\ViewController;
+use App\Http\Controllers\Webhook\WebhookController;
+use App\Http\Controllers\Api\WebhookHitController;
 
 // PUBLIC ROUTES
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout']);
 
+
+//
 Route::name('api.')->group(function () {
 
     // PROTECTED ROUTES
@@ -99,7 +103,15 @@ Route::name('api.')->group(function () {
         Route::put('/{id}', [ViewController::class, 'update'])->name('update');
         Route::delete('/{id}', [ViewController::class, 'destroy'])->name('destroy');
     });
-    
+
+    Route::prefix('webhooks')->name('webhooks.')->group(function () {
+        Route::prefix('hits')->name('hits.')->middleware('auth:sanctum')->group(function () {
+            Route::get('/', [WebhookHitController::class, 'index'])->name('index');     // api.webhooks.hits.index
+            Route::get('/{id}', [WebhookHitController::class, 'show'])->name('show');   // api.webhooks.hits.show
+            Route::delete('/{id}', [WebhookHitController::class, 'destroy'])->name('destroy');
+        });
+    }); 
+        
     Route::patch('/fields/{model}/{id}', function (
         Request $request,
         string $model,
