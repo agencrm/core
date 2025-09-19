@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 use App\Http\Controllers\Web\FlowController;
+use App\Http\Controllers\Web\FormController;
 use App\Http\Controllers\Web\UserController;
 use App\Http\Controllers\Web\WebhookController;
 use App\Http\Controllers\Web\ContactController;
@@ -42,9 +43,15 @@ Route::prefix('contacts')->name('contacts.')->group(function () {
 
 // Flows
 Route::prefix('flows')->name('flows.')->group(function () {
-    Route::get('/', [ContactController::class, 'index'])->name('index'); 
-    Route::get('/{id}', [ContactController::class, 'show'])->name('show');  // GET /api/flows/{id}
+    Route::get('/', [FlowController::class, 'index'])->name('index'); 
+    Route::get('/{id}', [FlowController::class, 'show'])->name('show');  // GET /api/flows/{id}
 });
+
+Route::prefix('forms')->name('forms.')->group(function () {
+    Route::get('/', [FormController::class, 'index'])->name('index'); 
+    Route::get('/{id}', [FormController::class, 'show'])->name('show');  // GET /api/flows/{id}
+});
+
 
 // Settings
 Route::prefix('settings')->name('settings.')->group(function () {

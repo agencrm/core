@@ -19,6 +19,9 @@ const apiKey = import.meta.env.VITE_APP_API_KEY
 
 // console.log(apiKey);
 
+import ModalDialog from '@/components/Modal/Dialog.vue';
+import ModalTray from '@/components/Modal/Tray.vue';
+import Modal from '@/components/Modal/Modal.vue';
 
 const createOpen = ref(false)
 
@@ -45,56 +48,61 @@ watch(view, v => { try { localStorage.setItem(routeKey, v) } catch {} })
 
 // Columns
 const columns = [
-  {
-    accessorKey: 'id',
-    header: 'ID',
-    cell: ({ row }) => {
-      const id = row.original.id
-      const href = (typeof route === 'function')
-        ? route('flows.show', id)
-        : `/flows/${id}`
-      return h(Link, { href, class: 'text-blue-600 hover:underline' }, () => String(id))
-    },
-        meta: { 
-      focusable: true,
-     },
+    {
+        accessorKey: 'id',
+        header: 'ID',
+        cell: ({ row }) => {
+        const id = row.original.id
+        const href = (typeof route === 'function')
+            ? route('flows.show', id)
+            : `/flows/${id}`
+        return h(Modal, {
+            id,
+            href,
+            title: `Contact #${id}`,
+            subtitle: 'Open the full page or close.',
+            contentClass: 'w-[32rem] max-w-[95vw]',     // tray width
+            storageKey: 'ui.modal.contacts.idCell',     // preference is scoped to Contacts table
+        })
+        },
+        meta: { focusable: true },
   },
   { accessorKey: 'first_name', header: 'First Name', cell: ({ row }) => row.getValue('first_name'),
         meta: { 
       focusable: true,
-     },
- },
+      },
+  },
   { accessorKey: 'last_name',  header: 'Last Name',  cell: ({ row }) => row.getValue('last_name'),  
         meta: { 
       focusable: true,
      },
-},
-  { accessorKey: 'email',      header: 'Email',      cell: ({ row }) => row.getValue('email'),     
-      meta: { 
-      focusable: true,
-     },
- },
-  {
-    accessorKey: 'label_id',
-    header: 'Label',
-    meta: { 
-      focusable: true,
-      isFillable: true,
-     },
-    cell: ({ row }) =>
-      h(CellEditableFieldLabel, {
-        model: 'contact',
-        modelId: row.original.id,
-        token: apiKey,
-        value: row.original.label_id,
-        labelMap: labelMap.value,
-      }),
-  },
-  {
-    accessorKey: 'created_at',
-    header: 'Created At',
-    cell: ({ row }) => new Date(row.getValue('created_at')).toLocaleString(),
-  },
+    },
+    { accessorKey: 'email',      header: 'Email',      cell: ({ row }) => row.getValue('email'),     
+        meta: { 
+        focusable: true,
+        },
+    },
+    {
+        accessorKey: 'label_id',
+        header: 'Label',
+        meta: { 
+        focusable: true,
+        isFillable: true,
+        },
+        cell: ({ row }) =>
+        h(CellEditableFieldLabel, {
+            model: 'contact',
+            modelId: row.original.id,
+            token: apiKey,
+            value: row.original.label_id,
+            labelMap: labelMap.value,
+        }),
+    },
+    {
+        accessorKey: 'created_at',
+        header: 'Created At',
+        cell: ({ row }) => new Date(row.getValue('created_at')).toLocaleString(),
+    },
 ]
 
 // Helper to normalize resource vs raw

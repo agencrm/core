@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\FlowController;
 use App\Http\Controllers\Api\ViewController;
 use App\Http\Controllers\Webhook\WebhookController;
 use App\Http\Controllers\Api\WebhookHitController;
+use App\Http\Controllers\Api\FormController;
 
 // PUBLIC ROUTES
 Route::post('/login', [AuthController::class, 'login']);
@@ -94,6 +95,14 @@ Route::name('api.')->group(function () {
         Route::post('/', [FlowController::class, 'store'])->name('store');   // POST /api/flows
         Route::patch('/{id}', [FlowController::class, 'update'])->name('update'); // PATCH /api/flows/{id}
         Route::delete('/{id}', [FlowController::class, 'destroy'])->name('destroy'); // DELETE /api/flows/{id}
+    });
+
+    // Forms
+    Route::prefix('forms')->name('forms.')->group(function () {
+        Route::get('/', [FormController::class, 'index'])->name('index');
+        Route::get('/{id}', [FormController::class, 'show'])->name('show');
+        Route::post('/', [FormController::class, 'store'])->name('store');
+        Route::delete('/{id}', [FormController::class, 'destroy'])->name('destroy');
     });
 
     Route::prefix('views')->name('views.')->middleware('auth:sanctum')->group(function () {

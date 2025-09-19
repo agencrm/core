@@ -14,11 +14,15 @@ const props = defineProps<{
     authToken: string
     showBoardControls?: boolean
     labelGroupId?: number
+    /** used by PATCH endpoint: /api/fields/:model/:id */
+    modelName?: 'contact' | 'task' | 'project' | string
 }>()
 
 const emit = defineEmits(['update:labelMap'])
 
-const columns = ref<Array<{ id: string; title: string; items: any[] }>>([])
+type Column = { id: string; title: string; items: any[] }
+
+const columns = ref<Column[]>([])
 const labelMap = ref<Record<number, { id: number; name: string }>>({})
 const columnMap = ref<any>(null)
 const rowMap = ref<any>(null)
@@ -27,7 +31,6 @@ const columnType = ref<string | null>(null)
 const rowType = ref<string | null>(null)
 const selectedColumnLabels = ref<Array<{ id: number; name: string }>>([])
 
-// NEW: capture full view state from controls (fixes undefined availableItems usage)
 const latestViewState = ref<{
     columnType: string | null
     rowType: string | null
@@ -99,6 +102,7 @@ onMounted(async () => {
     await fetchLabelsForGroup()
     await fetchItemsForColumns()
 
+    // fallback: distribute evenly when not using a label group
     if (!props.labelGroupId) {
         const res = await axios.get(route(props.routeName), {
             headers: { Authorization: `Bearer ${props.authToken}` },
@@ -119,7 +123,7 @@ onMounted(async () => {
 
 const columnMapDisplay = computed(() => columnMap.value)
 
-// ---------- Optional: persist view to API (debounced) ----------
+// ---------- Persist view (debounced) ----------
 const activeViewId = ref<number | null>(null)
 
 const persistView = debounce(async () => {
@@ -146,22 +150,65 @@ const persistView = debounce(async () => {
 watch([selectedColumnLabels, columnType, rowType, latestViewState], () => {
     persistView()
 })
+
+async function patchField(model: string, id: number | string, key: string, value: any, headers: any) {
+    return axios.patch(`/api/fields/${model}/${id}`, { key, value }, { headers })
+}
+
+/**
+ * Optimistic drop handler:
+ * - UI already reflects the move (vuedraggable).
+ * - Mark the card as updating.
+ * - PATCH server with { key, value } payload.
+ * - On failure: move it back to the source column.
+ */
+async function handleCardDropped(payload: {
+    item: any
+    fromColumnId: string
+    toColumnId: string
+    toIndex: number
+}) {
+    const headers = { Authorization: `Bearer ${props.authToken}` }
+    const model = props.modelName ?? 'contact'
+
+    let keyToUpdate: string | null = null
+    let valueToSet: string | number | null = null
+
+    switch (columnType.value) {
+        case 'labels':
+            keyToUpdate = 'label_id'
+            valueToSet = Number(payload.toColumnId)
+            break
+        default:
+            keyToUpdate = null
+    }
+    if (!keyToUpdate) return
+
+    const toCol = columns.value.find(c => c.id === payload.toColumnId)
+    const fromCol = columns.value.find(c => c.id === payload.fromColumnId)
+    if (!toCol || !fromCol) return
+
+    payload.item.__optimisticUpdating = true
+
+    try {
+        await patchField(model, payload.item.id, keyToUpdate, valueToSet, headers)
+        if (keyToUpdate === 'label_id') payload.item.label_id = valueToSet
+    } catch (err) {
+        // rollback
+        const idx = toCol.items.findIndex(i => i.id === payload.item.id)
+        if (idx >= 0) {
+            const [moved] = toCol.items.splice(idx, 1)
+            fromCol.items.push(moved)
+        }
+        if (keyToUpdate === 'label_id') payload.item.label_id = Number(payload.fromColumnId) || null
+        console.error('Drop update failed:', err)
+    } finally {
+        payload.item.__optimisticUpdating = false
+    }
+}
 </script>
 
 <template>
-
-
-    <!-- <pre class="bg-black text-white text-sm mt-4 p-2 rounded overflow-auto max-h-64">
-        {{ JSON.stringify(columnMapDisplay, null, 2) }}
-    </pre>
-
-    <pre
-        v-if="Object.keys(labelMap).length"
-        class="bg-black text-white text-sm mt-4 p-2 rounded overflow-auto max-h-64"
-    >
-        {{ JSON.stringify(labelMap, null, 2) }}
-    </pre> -->
-
     <div class="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 px-2 md:px-0 h-full">
         <BoardControls
             v-if="props.showBoardControls"
@@ -172,7 +219,7 @@ watch([selectedColumnLabels, columnType, rowType, latestViewState], () => {
             :storage-key="`board:${props.routeName}${props.labelGroupId ? ':lg=' + props.labelGroupId : ''}`"
             @update:columnType="val => columnType = val"
             @update:rowType="val => rowType = val"
-            @update:labelSelection="/* noop for now */(_)=>{}"
+            @update:labelSelection="(_)=>{}"
             @update:selectedItems="val => { selectedColumnLabels = val }"
             @update:viewState="v => { latestViewState = v }"
         />
@@ -184,6 +231,7 @@ watch([selectedColumnLabels, columnType, rowType, latestViewState], () => {
             :title="col.title"
             :items="col.items"
             :label-map="labelMap"
+            @dropped="handleCardDropped"
         />
     </div>
 </template>

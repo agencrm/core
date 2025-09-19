@@ -1,7 +1,9 @@
 <script setup lang="ts">
 // resources/js/components/Views/Boards/BoardCard.vue
 
-import { GripVertical } from 'lucide-vue-next'
+import { GripVertical, SquareArrowOutUpRight } from 'lucide-vue-next'
+import { route } from 'ziggy-js'
+import Modal from '@/components/Modal/Modal.vue'
 import CellEditableFieldLabel from '@/components/Fields/InPlaceEditable/Label.vue'
 
 const props = defineProps<{
@@ -10,6 +12,10 @@ const props = defineProps<{
   isGhost?: boolean
   labelMap?: Record<number, { id: number; name: string }>
 }>()
+
+const href = typeof route === 'function'
+  ? route('flows.show', props.item?.id)
+  : `/flows/${props.item?.id}`
 </script>
 
 <template>
@@ -17,7 +23,8 @@ const props = defineProps<{
     class="rounded-lg border bg-card text-card-foreground shadow-sm transition-all"
     :class="{
       'ring-2 ring-indigo-500': isGhost,
-      'opacity-30': isOverlay
+      'opacity-30': isOverlay,
+      'opacity-70 pointer-events-none': item.__optimisticUpdating === true
     }"
   >
     <!-- Header with Label -->
@@ -29,7 +36,6 @@ const props = defineProps<{
         <GripVertical class="w-4 h-4" />
       </button>
 
-      <!-- Editable Label Field -->
       <CellEditableFieldLabel
         model="contact"
         :model-id="item.id"
@@ -41,7 +47,26 @@ const props = defineProps<{
 
     <!-- Main Content -->
     <div class="p-3 text-left text-sm whitespace-pre-wrap">
-      {{ item.first_name }} {{ item.last_name }}
+      <Modal
+        :id="item.id"
+        :href="href"
+        :title="`Contact #${item.id}`"
+        subtitle="Open the full page or close."
+        content-class="w-[32rem] max-w-[95vw]"
+        storage-key="ui.modal.boardCard"
+      >
+        <template #trigger>
+          <button class="inline-flex items-center gap-1 font-medium underline-offset-2 hover:underline focus:outline-none">
+            <span>{{ item.first_name }} {{ item.last_name }}</span>
+            <SquareArrowOutUpRight class="w-3.5 h-3.5 opacity-70" aria-hidden="true" />
+          </button>
+        </template>
+
+        <div class="text-sm">
+          <div class="text-muted-foreground">{{ item.email }}</div>
+        </div>
+      </Modal>
+
       <br />
       <span class="text-xs text-muted-foreground">
         {{ item.email }}
