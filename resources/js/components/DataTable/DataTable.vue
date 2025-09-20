@@ -33,18 +33,19 @@ import DataTableToolbar from '@/components/DataTable/Toolbar.vue'
 
 // Props
 const props = defineProps<{
-  endpointRoute: string
-  authToken?: string
-  columns: ColumnDef<any>[]
-  searchPlaceholder?: string
-  onFill?: (args: {
-    colId: string
-    sourceRowIndex: number
-    targetRowIndices: number[]
-    value: any
-    rows: any[]
-  }) => Promise<void> | void
-  showExpandColumn?: boolean   // NEW: adds a leading toggle column (default true)
+    endpointRoute: string
+    authToken?: string
+    columns: ColumnDef<any>[]
+    searchPlaceholder?: string
+    onFill?: (args: {
+      colId: string
+      sourceRowIndex: number
+      targetRowIndices: number[]
+      value: any
+      rows: any[]
+    }) => Promise<void> | void
+    showExpandColumn?: boolean 
+    params?: Record<string, any>
 }>()
 
 const showExpandColumn = computed(() => props.showExpandColumn !== false)
@@ -90,15 +91,20 @@ function isCellFillable(cell: any): boolean {
 
 // Build Ziggy-powered request URL
 const buildRequestUrl = (pageIndex: number, pageSize: number): string => {
-  const baseUrl = route(props.endpointRoute)
-  const params = new URLSearchParams()
-  params.set('page', String(pageIndex + 1))
-  params.set('limit', String(pageSize))
-  params.set('search', searchTerm.value)
-  params.set('sort', '')
-  params.set('direction', 'asc')
-  const fullUrl = `${baseUrl}?${params.toString()}`
-  return fullUrl
+    const baseUrl = route(props.endpointRoute)
+    const params = new URLSearchParams()
+    params.set('page', String(pageIndex + 1))
+    params.set('limit', String(pageSize))
+    params.set('search', searchTerm.value)
+    params.set('sort', '')
+    params.set('direction', 'asc')
+    if (props.params && typeof props.params === 'object') {
+        Object.entries(props.params).forEach(([k, v]) => {
+        if (v === undefined || v === null) return
+        params.set(k, String(v))
+        })
+    }
+    return `${baseUrl}?${params.toString()}`
 }
 
 function parseRowFromKey(key: string): number | null {
@@ -174,12 +180,22 @@ async function getPageData(pageIndex: number, pageSize: number) {
 
 // Watchers
 watchEffect(() => {
-  getPageData(pagination.value.pageIndex, pagination.value.pageSize)
+    getPageData(pagination.value.pageIndex, pagination.value.pageSize)
 })
+
+watch(
+    () => props.params ? JSON.stringify(props.params) : '',
+    () => {
+        pagination.value.pageIndex = 0
+        getPageData(0, pagination.value.pageSize)
+    }
+)
+
+
 watch([searchTerm, perPage], () => {
-  pagination.value.pageIndex = 0
-  pagination.value.pageSize = perPage.value
-  getPageData(0, perPage.value)
+    pagination.value.pageIndex = 0
+    pagination.value.pageSize = perPage.value
+    getPageData(0, perPage.value)
 })
 
 // Resync TanStack without fetch

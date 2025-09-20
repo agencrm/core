@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\ViewController;
 use App\Http\Controllers\Webhook\WebhookController;
 use App\Http\Controllers\Api\WebhookHitController;
 use App\Http\Controllers\Api\FormController;
+use App\Http\Controllers\Api\CommentController;
 
 // PUBLIC ROUTES
 Route::post('/login', [AuthController::class, 'login']);
@@ -97,6 +98,15 @@ Route::name('api.')->group(function () {
         Route::delete('/{id}', [FlowController::class, 'destroy'])->name('destroy'); // DELETE /api/flows/{id}
     });
 
+    // Comments
+    Route::prefix('comments')->name('comments.')->middleware('auth:sanctum')->group(function () {
+        Route::get('/', [CommentController::class, 'index'])->name('index');     // GET /api/comments
+        Route::get('/{id}', [CommentController::class, 'show'])->name('show');  // GET /api/comments/{id}
+        Route::post('/', [CommentController::class, 'store'])->name('store');   // POST /api/comments
+        Route::patch('/{id}', [CommentController::class, 'update'])->name('update'); // PATCH /api/comments/{id}
+        Route::delete('/{id}', [CommentController::class, 'destroy'])->name('destroy'); // DELETE /api/comments/{id}
+    });
+
     // Forms
     Route::prefix('forms')->name('forms.')->group(function () {
         Route::get('/', [FormController::class, 'index'])->name('index');
@@ -105,6 +115,7 @@ Route::name('api.')->group(function () {
         Route::delete('/{id}', [FormController::class, 'destroy'])->name('destroy');
     });
 
+    // View
     Route::prefix('views')->name('views.')->middleware('auth:sanctum')->group(function () {
         Route::get('/', [ViewController::class, 'index'])->name('index');
         Route::post('/', [ViewController::class, 'store'])->name('store');

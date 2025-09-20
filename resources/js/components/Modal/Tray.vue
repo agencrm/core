@@ -9,6 +9,16 @@ import {
   SheetDescription,
   SheetFooter,
 } from '@/components/ui/sheet'
+import ModalBlockContent from '@/components/Modal/ModalBlockContent.vue'
+
+type BlockKey = 'fields' | 'notes' | 'comments'
+type BlockSpec =
+  | BlockKey
+  | {
+      key: BlockKey
+      title?: string
+      props?: Record<string, any>
+    }
 
 const props = defineProps<{
   id: number | string
@@ -16,6 +26,8 @@ const props = defineProps<{
   title?: string
   subtitle?: string
   contentClass?: string
+  // NEW
+  blocks?: BlockSpec[]
 }>()
 
 const emit = defineEmits<{ (e: 'close'): void }>()
@@ -30,20 +42,23 @@ const emit = defineEmits<{ (e: 'close'): void }>()
           {{ props.subtitle ?? 'Quick actions and details' }}
         </SheetDescription>
       </div>
-      <!-- header toggle slot (e.g., Dialog/Tray switch) -->
       <slot name="headerExtra" />
     </SheetHeader>
 
     <!-- body -->
     <div class="mt-4 space-y-3">
       <slot>
-        <div class="text-sm text-muted-foreground">
-          ID: <span class="font-medium text-foreground">{{ props.id }}</span>
-        </div>
+        <template v-if="props.blocks && props.blocks.length">
+          <ModalBlockContent :id="props.id" :blocks="props.blocks" />
+        </template>
+        <template v-else>
+          <div class="text-sm text-muted-foreground">
+            ID: <span class="font-medium text-foreground">{{ props.id }}</span>
+          </div>
+        </template>
       </slot>
     </div>
 
-    <!-- footer -->
     <SheetFooter class="mt-6 gap-2">
       <Link
         v-if="props.href"

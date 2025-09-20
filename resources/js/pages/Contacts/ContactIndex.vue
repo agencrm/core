@@ -5,7 +5,7 @@ import { ref, onMounted, watch, h } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { Head, Link } from '@inertiajs/vue3'
 import DataTable from '@/components/DataTable/DataTable.vue'
-import { Plus, Settings2 } from 'lucide-vue-next'
+import { Plus, Settings2, SquareArrowOutUpRight } from 'lucide-vue-next' 
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger
 } from '@/components/ui/dialog'
@@ -46,37 +46,111 @@ const view = ref<'table'|'board'>('table')
 onMounted(() => { try { const s = localStorage.getItem(routeKey); if (s === 'board' || s === 'table') view.value = s } catch {} })
 watch(view, v => { try { localStorage.setItem(routeKey, v) } catch {} })
 
+const CONTACT_FQCN = 'App\\\\Models\\\\Contact'
+
+
 // Columns
 const columns = [
+    // ID column
     {
-        accessorKey: 'id',
-        header: 'ID',
-        cell: ({ row }) => {
+    accessorKey: 'id',
+    header: 'ID',
+    cell: ({ row }) => {
         const id = row.original.id
-        const href = (typeof route === 'function')
-            ? route('flows.show', id)
-            : `/flows/${id}`
-        return h(Modal, {
+        const href = typeof route === 'function' ? route('contacts.show', id) : `/contacts/${id}`
+
+        return h(
+        Modal,
+        {
             id,
             href,
             title: `Contact #${id}`,
             subtitle: 'Open the full page or close.',
-            contentClass: 'w-[32rem] max-w-[95vw]',     // tray width
-            storageKey: 'ui.modal.contacts.idCell',     // preference is scoped to Contacts table
-        })
+            contentClass: 'w-[32rem] max-w-[95vw]',
+            storageKey: 'ui.modal.contacts.idCell',
+        },
+        {
+            // Pass only the label; Modal will render the icon inside its own trigger button
+            trigger: () => String(id),
+        }
+        )
+    },
+    meta: { focusable: true },
+    },
+
+    // First name column
+    {
+        accessorKey: 'first_name',
+        header: 'First Name',
+        cell: ({ row }) => {
+            const id = row.original.id
+            const firstName = row.original.first_name ?? '—'
+            const href = typeof route === 'function' ? route('contacts.show', id) : `/contacts/${id}`
+
+            return h(
+            Modal,
+            {
+                id,
+                href,
+                title: `${firstName} (#${id})`,
+                subtitle: 'Open the full page or close.',
+                contentClass: 'w-[32rem] max-w-[95vw]',
+                storageKey: 'ui.modal.contacts.firstNameCell',
+                //blocks: ['fields', 'notes', 'comments'],
+                blocks: [
+                {
+                    key: 'fields',
+                    // // Optional: if your show route name differs
+                    // props: {
+                    //   endpointRoute: 'api.contacts.show', // or endpointUrl: '/api/contacts/{id}'
+                    //   token: apiKey,
+                    //   // Control which fields render and their labels/format
+                    //   fieldMap: [
+                    //     { key: 'first_name', label: 'First Name' },
+                    //     { key: 'last_name',  label: 'Last Name'  },
+                    //     { key: 'email',      label: 'Email'      },
+                    //     {
+                    //       key: 'created_at',
+                    //       label: 'Created',
+                    //       formatter: (v) => (v ? new Date(v).toLocaleString() : '—'),
+                    //     },
+                    //   ],
+                    //   // Or omit fieldMap to auto-list all properties except excluded:
+                    //   // exclude: ['some_large_json']
+                    // },
+                },
+                'notes',
+                {
+                    key: 'comments',
+                    props: {
+                    commentableType: CONTACT_FQCN,
+                    commentableId: id,
+                    token: apiKey,
+                    // parentId: 123, // optional, only if this form is a reply to another comment
+                    // meta: { source: 'contacts.index' }, // optional
+                    },
+                },
+                ]
+
+
+
+            },
+            { trigger: () => firstName }
+            )
         },
         meta: { focusable: true },
-  },
-  { accessorKey: 'first_name', header: 'First Name', cell: ({ row }) => row.getValue('first_name'),
-        meta: { 
-      focusable: true,
-      },
-  },
-  { accessorKey: 'last_name',  header: 'Last Name',  cell: ({ row }) => row.getValue('last_name'),  
-        meta: { 
-      focusable: true,
-     },
     },
+
+    // { accessorKey: 'first_name', header: 'First Name', cell: ({ row }) => row.getValue('first_name'),
+    //         meta: { 
+    //     focusable: true,
+    //     },
+    // },
+    { accessorKey: 'last_name',  header: 'Last Name',  cell: ({ row }) => row.getValue('last_name'),  
+            meta: { 
+        focusable: true,
+        },
+        },
     { accessorKey: 'email',      header: 'Email',      cell: ({ row }) => row.getValue('email'),     
         meta: { 
         focusable: true,

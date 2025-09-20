@@ -45,6 +45,11 @@ const mainNavItems: NavItem[] = [
         href: '/messages',
         icon: MessageSquare,
     },
+    {
+        title: 'Comments',
+        href: '/comments',
+        icon: MessageSquare,
+    },
 ];
 
 const footerNavItems: NavItem[] = [

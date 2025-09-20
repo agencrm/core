@@ -10,6 +10,7 @@ use App\Http\Controllers\Web\FormController;
 use App\Http\Controllers\Web\UserController;
 use App\Http\Controllers\Web\WebhookController;
 use App\Http\Controllers\Web\ContactController;
+use App\Http\Controllers\Web\CommentController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome');
@@ -45,6 +46,12 @@ Route::prefix('contacts')->name('contacts.')->group(function () {
 Route::prefix('flows')->name('flows.')->group(function () {
     Route::get('/', [FlowController::class, 'index'])->name('index'); 
     Route::get('/{id}', [FlowController::class, 'show'])->name('show');  // GET /api/flows/{id}
+});
+
+// Comments
+Route::prefix('comments')->name('comments.')->group(function () {
+    Route::get('/', [CommentController::class, 'index'])->name('index'); 
+    Route::get('/{id}', [CommentController::class, 'show'])->name('show');  // GET /api/comments/{id}
 });
 
 Route::prefix('forms')->name('forms.')->group(function () {

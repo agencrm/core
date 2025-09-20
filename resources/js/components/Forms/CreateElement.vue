@@ -110,6 +110,7 @@ async function handleSubmit() {
         :option-label="field.optionLabel"
         :option-value="field.optionValue"
         :placeholder="field.placeholder"
+        :token="token"
         v-bind="field.attributes"
         class="mt-1 block w-full"
       />

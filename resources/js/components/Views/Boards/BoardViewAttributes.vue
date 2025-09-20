@@ -1,12 +1,11 @@
+<!-- resources/js/components/Views/Boards/BoardViewAttributes.vue -->
 <script setup lang="ts">
-
 // resources/js/components/Views/Boards/BoardViewAttributes.vue
 
 import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
 import draggable from 'vuedraggable'
 import { GripVertical, Eraser } from 'lucide-vue-next'
-
 
 import {
   Select,
@@ -15,8 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-
-import BoardViewAttributes from '@/components/Views/Boards/BoardViewAttributes.vue';
 
 import { Button } from "@/components/ui/button"
 import {
@@ -45,11 +42,12 @@ const props = defineProps<{
   endpoint?: string
   optionLabel?: string
   optionValue?: string
+  storageKey?: string
 }>()
 
-const emit = defineEmits(['update:columnType', 'update:rowType', 'update:labelSelection', 'update:selectedItems'])
+const emit = defineEmits(['update:columnType', 'update:rowType', 'update:labelSelection', 'update:selectedItems', 'update:viewState'])
 
-const STORAGE_KEY = 'board-controls'
+const STORAGE_KEY = props.storageKey ?? 'board-controls'
 const DRAG_STATE_KEY = 'saved-selected-labels'
 const STORAGE_KEY_2 = 'label-drag-selected'
 
@@ -71,7 +69,7 @@ const rowSelectOptions = computed(() => props.rowOptions ?? defaultOptions.rows)
 
 const columnType = ref<string | null>(null)
 const rowType = ref<string | null>(null)
-const labelSelection = ref<Array<string | number>>([])
+const labelSelection = ref<Array<number>>([]) // coerced to numbers
 
 const labelGroupMap = ref<Record<number, { id: number; name: string }>>({})
 const allLabels = ref<Array<{ id: number; name: string; group_id: string }>>([])
@@ -113,8 +111,9 @@ onMounted(() => {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
     columnType.value = saved.columnType ?? null
     rowType.value = saved.rowType ?? null
-    labelSelection.value = saved.labelSelection ?? []
-
+    // coerce to numbers
+    const rawSel = saved.labelSelection ?? []
+    labelSelection.value = Array.isArray(rawSel) ? rawSel.map((x: any) => Number(x)).filter(Number.isFinite) : []
     const stored = localStorage.getItem(DRAG_STATE_KEY)
     if (stored) {
       selectedLabelsByGroup.value = JSON.parse(stored)
@@ -125,7 +124,7 @@ onMounted(() => {
 
   try {
     const savedCols = JSON.parse(localStorage.getItem(STORAGE_KEY_2) || '[]')
-    selectedItems.value = savedCols
+    selectedItems.value = Array.isArray(savedCols) ? savedCols : []
   } catch {
     selectedItems.value = []
   }
@@ -135,6 +134,13 @@ onMounted(() => {
   emit('update:rowType', rowType.value === '__none__' ? null : rowType.value)
   emit('update:labelSelection', labelSelection.value)
   emit('update:selectedItems', selectedItems.value)
+
+  // If restored state already qualifies, fetch now
+  if (columnType.value === 'labels' && labelSelection.value.length > 0) {
+    fetchLabelsForGroups()
+  }
+
+  emitViewState()
 })
 
 watch([columnType, rowType, labelSelection], ([col, row, labels]) => {
@@ -145,20 +151,23 @@ watch([columnType, rowType, labelSelection], ([col, row, labels]) => {
   emit('update:columnType', col)
   emit('update:rowType', row === '__none__' ? null : row)
   emit('update:labelSelection', labels)
+  emitViewState()
 })
 
-watch(labelSelection, () => {
-  if (columnType.value === 'labels' && labelSelection.value.length) {
+// Ensure we fetch when either precondition becomes true
+watch([columnType, labelSelection], ([col, labels]) => {
+  if (col === 'labels' && Array.isArray(labels) && labels.length > 0) {
     fetchLabelsForGroups()
   }
 })
 
 function handleLabelUpdate(val: string[] | number[]) {
-  labelSelection.value = val
+  // force numeric ids (most APIs validate as ints)
+  labelSelection.value = (val ?? []).map((x: any) => Number(x)).filter(Number.isFinite)
 }
 
 async function fetchLabelsForGroups() {
-  const groupIds = labelSelection.value
+  const groupIds = labelSelection.value as number[]
   const url = props.endpoint ?? '/api/labels'
 
   try {
@@ -167,43 +176,56 @@ async function fetchLabelsForGroups() {
       params: { group_ids: groupIds },
     })
 
-    const labels = (res.data.data ?? []).flatMap((label: any) =>
-      (label.groups ?? []).map((group: any) => ({
-        id: Number(label.id),
-        name: label.name,
-        group_id: String(group.id),
+    const raw = res.data?.data ?? []
+
+    // Build robust list { id, name, group_id } whether or not API includes label.groups
+    const flattened = raw.flatMap((label: any) => {
+      const lid = Number(label.id)
+      const lname = label.name ?? String(label.id)
+
+      const groups = Array.isArray(label.groups) && label.groups.length
+        ? label.groups.map((g: any) => Number(g.id)).filter(Number.isFinite)
+        : groupIds // fallback: attach label to each requested group
+
+      return groups.map((gid: number) => ({
+        id: lid,
+        name: lname,
+        group_id: String(gid),
       }))
-    )
+    })
 
-    allLabels.value = labels
-    allItems.value = labels.map(label => ({ id: label.id, name: label.name, group_id: label.group_id }))
-    syncAvailable()
+    allLabels.value = flattened
+    allItems.value = flattened.map(l => ({ id: l.id, name: l.name, group_id: l.group_id }))
 
-    labelGroupMap.value = Object.fromEntries(
-      (res.data.data ?? [])
-        .flatMap((label: any) => label.groups ?? [])
-        .map((group: any) => [group.id, group])
-    )
-
+    // restore selected (if any) and recompute available
     const selectedRaw = JSON.parse(localStorage.getItem(DRAG_STATE_KEY) || '{}')
     selectedLabelsByGroup.value = {}
     for (const [gid, list] of Object.entries(selectedRaw)) {
       selectedLabelsByGroup.value[gid] = list as any[]
     }
+
+    syncAvailable()
+
+    // optional: group map for UI usage
+    labelGroupMap.value = Object.fromEntries(groupIds.map(gid => [gid, { id: gid }]))
+
+    emitViewState()
   } catch (err) {
     console.error('[fetchLabelsForGroups] ERROR:', err)
   }
 }
 
 function syncAvailable() {
-  const selectedIds = new Set(selectedItems.value.map(i => i.id))
-  availableItems.value = allItems.value.filter(i => !selectedIds.has(i.id))
+  const selectedIds = new Set((selectedItems.value ?? []).map(i => i.id))
+  const all = Array.isArray(allItems.value) ? allItems.value : []
+  availableItems.value = all.filter(i => !selectedIds.has(i.id))
 }
 
 watch(selectedItems, (val) => {
   localStorage.setItem(STORAGE_KEY_2, JSON.stringify(val))
   syncAvailable()
   emit('update:selectedItems', val)
+  emitViewState()
 }, { deep: true })
 
 function clearSelectedItems() {
@@ -211,142 +233,149 @@ function clearSelectedItems() {
   selectedItems.value = []
   syncAvailable()
   emit('update:selectedItems', [])
+  emitViewState()
+}
+
+function emitViewState() {
+  emit('update:viewState', {
+    columnType: columnType.value,
+    rowType: rowType.value === '__none__' ? null : rowType.value,
+    labelSelection: labelSelection.value,
+    selectedItems: selectedItems.value,
+  })
 }
 </script>
 
-
 <template>
+  <div class="flex flex-col gap-6">
+    <!-- Row: Group By Type -->
+    <div class="flex flex-col gap-2">
+      <label class="text-sm font-medium">Group By Type</label>
+      <Select v-model="columnType">
+        <SelectTrigger class="w-full max-w-md">
+          <SelectValue placeholder="Select column type" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem
+            v-for="opt in columnSelectOptions"
+            :key="opt.value"
+            :value="opt.value"
+          >
+            {{ opt.label }}
+          </SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
 
-        <div class="flex flex-col gap-6">
-      <!-- Row: Group By Type -->
-      <div class="flex flex-col gap-2">
-        <label class="text-sm font-medium">Group By Type</label>
-        <Select v-model="columnType">
-          <SelectTrigger class="w-full max-w-md">
-            <SelectValue placeholder="Select column type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem
-              v-for="opt in columnSelectOptions"
-              :key="opt.value"
-              :value="opt.value"
+    <!-- Row: Label Groups -->
+    <div class="flex flex-col gap-2">
+      <label class="text-sm font-medium">Label Group(s)</label>
+      <StandaloneCombobox
+        :model-value="labelSelection"
+        @update:modelValue="handleLabelUpdate"
+        :token="props.token"
+        :endpoint="'/api/label-groups'"
+        :option-label="props.optionLabel ?? 'name'"
+        :option-value="props.optionValue ?? 'id'"
+        :multiple="true"
+        placeholder="Select group(s)"
+        class="max-w-3xl"
+      />
+    </div>
+
+    <!-- Row: Rows/Swimlanes -->
+    <div class="flex flex-col gap-2">
+      <label class="text-sm font-medium">Rows (swimlanes)</label>
+      <Select v-model="rowType">
+        <SelectTrigger class="w-full max-w-md">
+          <SelectValue placeholder="None" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem
+            v-for="opt in rowSelectOptions"
+            :key="opt.value"
+            :value="opt.value"
+          >
+            {{ opt.label }}
+          </SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+
+    <!-- Row: Drag UI - Available -->
+    <div
+      v-if="columnType === 'labels' && labelSelection.length"
+      class="flex flex-col gap-2 rounded-lg border bg-primary-foreground text-card-foreground shadow-sm"
+    >
+      <div class="p-4 font-semibold border-b">Available</div>
+      <div class="p-2">
+        <draggable
+          v-model="availableItems"
+          :group="'labels'"
+          item-key="id"
+          handle=".drag-handle"
+          class="flex flex-col gap-2"
+          @start="handleStart"
+          @end="handleEnd"
+          ghost-class="drag-ghost"
+          animation="200"
+        >
+          <template #item="{ element }">
+            <div
+              class="flex items-center gap-2 p-2 border rounded bg-muted text-sm"
+              :class="{ 'ring-2 ring-indigo-500': draggingItemId === element.id }"
             >
-              {{ opt.label }}
-            </SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <!-- Row: Label Groups -->
-      <div class="flex flex-col gap-2">
-        <label class="text-sm font-medium">Label Group(s)</label>
-        <StandaloneCombobox
-          :model-value="labelSelection"
-          @update:modelValue="handleLabelUpdate"
-          :token="props.token"
-          :endpoint="'/api/label-groups'"
-          :option-label="props.optionLabel ?? 'name'"
-          :option-value="props.optionValue ?? 'id'"
-          :multiple="true"
-          placeholder="Select group(s)"
-          class="max-w-3xl"
-        />
-      </div>
-
-      <!-- Row: Rows/Swimlanes -->
-      <div class="flex flex-col gap-2">
-        <label class="text-sm font-medium">Rows (swimlanes)</label>
-        <Select v-model="rowType">
-          <SelectTrigger class="w-full max-w-md">
-            <SelectValue placeholder="None" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem
-              v-for="opt in rowSelectOptions"
-              :key="opt.value"
-              :value="opt.value"
-            >
-              {{ opt.label }}
-            </SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <!-- Row: Drag UI - Available -->
-      <div
-        v-if="columnType === 'labels' && labelSelection.length"
-        class="flex flex-col gap-2 rounded-lg border bg-primary-foreground text-card-foreground shadow-sm"
-      >
-        <div class="p-4 font-semibold border-b">Available</div>
-        <div class="p-2">
-          <draggable
-            v-model="availableItems"
-            :group="'labels'"
-            item-key="id"
-            handle=".drag-handle"
-            class="flex flex-col gap-2"
-            @start="handleStart"
-            @end="handleEnd"
-            ghost-class="drag-ghost"
-            animation="200"
-          >
-            <template #item="{ element }">
-              <div
-                class="flex items-center gap-2 p-2 border rounded bg-muted text-sm"
-                :class="{ 'ring-2 ring-indigo-500': draggingItemId === element.id }"
-              >
-                <GripVertical class="w-4 h-4 drag-handle text-muted-foreground" />
-                {{ element.name }}
-              </div>
-            </template>
-          </draggable>
-        </div>
-      </div>
-
-      <!-- Row: Drag UI - Selected -->
-      <div
-        v-if="columnType === 'labels' && labelSelection.length"
-        class="flex flex-col gap-2 rounded-lg border bg-primary-foreground text-card-foreground shadow-sm"
-      >
-        <div class="p-4 font-semibold border-b flex items-center">
-          <span class="mr-auto">Selected</span>
-          <button
-            @click="clearSelectedItems"
-            class="text-muted-foreground hover:text-foreground p-1 ml-2 transition-colors"
-            title="Clear selected items"
-          >
-            <Eraser class="w-5 h-5" />
-          </button>
-        </div>
-        <div class="p-2">
-          <draggable
-            v-model="selectedItems"
-            :group="'labels'"
-            item-key="id"
-            handle=".drag-handle"
-            class="flex flex-col gap-2"
-            @start="handleStart"
-            @end="handleEnd"
-            ghost-class="drag-ghost"
-            animation="200"
-          >
-            <template #item="{ element }">
-              <div
-                class="flex items-center gap-2 p-2 border rounded bg-muted text-sm"
-                :class="{ 'ring-2 ring-indigo-500': draggingItemId === element.id }"
-              >
-                <GripVertical class="w-4 h-4 drag-handle text-muted-foreground" />
-                {{ element.name }}
-              </div>
-            </template>
-          </draggable>
-        </div>
-      </div>
-
-      <!-- Row: Empty helper -->
-      <div v-else class="text-sm text-muted-foreground">
-        Choose “Labels” and pick one or more groups to build your column set.
+              <GripVertical class="w-4 h-4 drag-handle text-muted-foreground" />
+              {{ element.name }}
+            </div>
+          </template>
+        </draggable>
       </div>
     </div>
 
+    <!-- Row: Drag UI - Selected -->
+    <div
+      v-if="columnType === 'labels' && labelSelection.length"
+      class="flex flex-col gap-2 rounded-lg border bg-primary-foreground text-card-foreground shadow-sm"
+    >
+      <div class="p-4 font-semibold border-b flex items-center">
+        <span class="mr-auto">Selected</span>
+        <button
+          @click="clearSelectedItems"
+          class="text-muted-foreground hover:text-foreground p-1 ml-2 transition-colors"
+          title="Clear selected items"
+        >
+          <Eraser class="w-5 h-5" />
+        </button>
+      </div>
+      <div class="p-2">
+        <draggable
+          v-model="selectedItems"
+          :group="'labels'"
+          item-key="id"
+          handle=".drag-handle"
+          class="flex flex-col gap-2"
+          @start="handleStart"
+          @end="handleEnd"
+          ghost-class="drag-ghost"
+          animation="200"
+        >
+          <template #item="{ element }">
+            <div
+              class="flex items-center gap-2 p-2 border rounded bg-muted text-sm"
+              :class="{ 'ring-2 ring-indigo-500': draggingItemId === element.id }"
+            >
+              <GripVertical class="w-4 h-4 drag-handle text-muted-foreground" />
+              {{ element.name }}
+            </div>
+          </template>
+        </draggable>
+      </div>
+    </div>
+
+    <!-- Row: Empty helper -->
+    <div v-else class="text-sm text-muted-foreground">
+      Choose “Labels” and pick one or more groups to build your column set.
+    </div>
+  </div>
 </template>

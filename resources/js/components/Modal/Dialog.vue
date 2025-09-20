@@ -8,12 +8,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import ModalBlockContent from '@/components/Modal/ModalBlockContent.vue'
+
+type BlockKey = 'fields' | 'notes' | 'comments'
+type BlockSpec =
+  | BlockKey
+  | {
+      key: BlockKey
+      title?: string
+      props?: Record<string, any>
+    }
 
 const props = defineProps<{
   id: number | string
   href?: string
   title?: string
   subtitle?: string
+  // NEW
+  blocks?: BlockSpec[]
 }>()
 
 const emit = defineEmits<{ (e: 'close'): void }>()
@@ -28,16 +40,20 @@ const emit = defineEmits<{ (e: 'close'): void }>()
           {{ props.subtitle ?? 'Quick actions and details' }}
         </DialogDescription>
       </div>
-      <!-- header toggle slot (e.g., Dialog/Tray switch) -->
       <slot name="headerExtra" />
     </DialogHeader>
 
     <!-- body -->
     <slot>
       <div class="space-y-3">
-        <div class="text-sm text-muted-foreground">
-          ID: <span class="font-medium text-foreground">{{ props.id }}</span>
-        </div>
+        <template v-if="props.blocks && props.blocks.length">
+          <ModalBlockContent :id="props.id" :blocks="props.blocks" />
+        </template>
+        <template v-else>
+          <div class="text-sm text-muted-foreground">
+            ID: <span class="font-medium text-foreground">{{ props.id }}</span>
+          </div>
+        </template>
       </div>
     </slot>
 

@@ -188,6 +188,7 @@ onMounted(async () => {
                     :fields="form"
                     :field-map="fieldMap"
                     :auth-token="apiKey"
+                    :token="apiKey"
                     :onSuccess="handleSuccess"
                     :onError="handleError"
                     >

@@ -1,3 +1,4 @@
+<!-- resources/js/components/Modal/Modal.vue -->
 <script setup lang="ts">
 // resources/js/components/Modal/Modal.vue
 
@@ -6,8 +7,16 @@ import { Dialog as ShadDialog, DialogTrigger } from '@/components/ui/dialog'
 import { Sheet, SheetTrigger } from '@/components/ui/sheet'
 import ModalDialog from '@/components/Modal/Dialog.vue'
 import ModalTray from '@/components/Modal/Tray.vue'
+import { SquareArrowOutUpRight } from 'lucide-vue-next'
 
-import { SquareArrowOutUpRight } from 'lucide-vue-next';
+type BlockKey = 'fields' | 'notes' | 'comments'
+type BlockSpec =
+  | BlockKey
+  | {
+      key: BlockKey
+      title?: string
+      props?: Record<string, any>
+    }
 
 const props = defineProps<{
   id: number | string
@@ -16,6 +25,8 @@ const props = defineProps<{
   subtitle?: string
   contentClass?: string
   storageKey?: string
+  // NEW: block list to control which accordions appear
+  blocks?: BlockSpec[]
 }>()
 
 const prefKey = computed(() => props.storageKey ?? 'ui.modal.preferredStyle')
@@ -26,12 +37,16 @@ function readPref(key: string): 'dialog' | 'tray' {
   try {
     const v = localStorage.getItem(key)
     return v === 'tray' || v === 'dialog' ? v : 'dialog'
-  } catch { return 'dialog' }
+  } catch {
+    return 'dialog'
+  }
 }
 function writePref(key: string, v: 'dialog' | 'tray') {
-  try { localStorage.setItem(key, v) } catch {}
+  try {
+    localStorage.setItem(key, v)
+  } catch {}
 }
-watch(preferred, v => writePref(prefKey.value, v))
+watch(preferred, (v) => writePref(prefKey.value, v))
 
 const ToggleControl = {
   props: ['modelValue'],
@@ -55,23 +70,27 @@ const ToggleControl = {
 
 <template>
   <component :is="preferred === 'dialog' ? ShadDialog : Sheet" v-model:open="open">
-    <!-- ✅ Trigger now uses a slot, with an ID fallback -->
+    <!-- Trigger: always ours; slot provides label; icon always shown -->
     <component :is="preferred === 'dialog' ? DialogTrigger : SheetTrigger" as-child>
-      <slot name="trigger">
-        <button class="text-blue-600 hover:underline focus:outline-none">
+      <button
+        type="button"
+        class="inline-flex items-center gap-1 text-blue-600 hover:underline focus:outline-none"
+      >
+        <slot name="trigger">
           {{ String(id) }}
-        </button>
-                  <SquareArrowOutUpRight />
-      </slot>
+        </slot>
+        <SquareArrowOutUpRight class="h-3 w-3 opacity-70" />
+      </button>
     </component>
 
-    <!-- Dialog content -->
+    <!-- Forward blocks to inner shells -->
     <ModalDialog
       v-if="preferred === 'dialog'"
       :id="id"
       :href="href"
       :title="title"
       :subtitle="subtitle"
+      :blocks="blocks"
       @close="open = false"
     >
       <template #headerExtra>
@@ -80,7 +99,6 @@ const ToggleControl = {
       <slot />
     </ModalDialog>
 
-    <!-- Tray content -->
     <ModalTray
       v-else
       :id="id"
@@ -88,6 +106,7 @@ const ToggleControl = {
       :title="title"
       :subtitle="subtitle"
       :content-class="contentClass"
+      :blocks="blocks"
       @close="open = false"
     >
       <template #headerExtra>
