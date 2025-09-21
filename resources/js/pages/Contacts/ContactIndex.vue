@@ -19,9 +19,9 @@ const apiKey = import.meta.env.VITE_APP_API_KEY
 
 // console.log(apiKey);
 
-import ModalDialog from '@/components/Modal/Dialog.vue';
-import ModalTray from '@/components/Modal/Tray.vue';
+
 import Modal from '@/components/Modal/Modal.vue';
+import ContactModalFooter from '@/components/Elements/Contacts/ModalFooter.vue'
 
 const createOpen = ref(false)
 
@@ -51,32 +51,9 @@ const CONTACT_FQCN = 'App\\\\Models\\\\Contact'
 
 // Columns
 const columns = [
-    // ID column
-    {
-    accessorKey: 'id',
-    header: 'ID',
-    cell: ({ row }) => {
-        const id = row.original.id
-        const href = typeof route === 'function' ? route('contacts.show', id) : `/contacts/${id}`
 
-        return h(
-        Modal,
-        {
-            id,
-            href,
-            title: `Contact #${id}`,
-            subtitle: 'Open the full page or close.',
-            contentClass: 'w-[32rem] max-w-[95vw]',
-            storageKey: 'ui.modal.contacts.idCell',
-        },
-        {
-            // Pass only the label; Modal will render the icon inside its own trigger button
-            trigger: () => String(id),
-        }
-        )
-    },
-    meta: { focusable: true },
-    },
+    // ID column
+    { accessorKey: 'id', header: 'ID', cell: ({ row }: any) => row.getValue('id') },
 
     // First name column
     {
@@ -97,45 +74,77 @@ const columns = [
                 contentClass: 'w-[32rem] max-w-[95vw]',
                 storageKey: 'ui.modal.contacts.firstNameCell',
                 //blocks: ['fields', 'notes', 'comments'],
+                showFooter: false,      
                 blocks: [
-                {
-                    key: 'fields',
-                    // // Optional: if your show route name differs
-                    // props: {
-                    //   endpointRoute: 'api.contacts.show', // or endpointUrl: '/api/contacts/{id}'
-                    //   token: apiKey,
-                    //   // Control which fields render and their labels/format
-                    //   fieldMap: [
-                    //     { key: 'first_name', label: 'First Name' },
-                    //     { key: 'last_name',  label: 'Last Name'  },
-                    //     { key: 'email',      label: 'Email'      },
-                    //     {
-                    //       key: 'created_at',
-                    //       label: 'Created',
-                    //       formatter: (v) => (v ? new Date(v).toLocaleString() : '—'),
-                    //     },
-                    //   ],
-                    //   // Or omit fieldMap to auto-list all properties except excluded:
-                    //   // exclude: ['some_large_json']
-                    // },
-                },
-                'notes',
-                {
-                    key: 'comments',
-                    props: {
-                    commentableType: CONTACT_FQCN,
-                    commentableId: id,
-                    token: apiKey,
-                    // parentId: 123, // optional, only if this form is a reply to another comment
-                    // meta: { source: 'contacts.index' }, // optional
+                    {
+                        key: 'fields',
+                        // // Optional: if your show route name differs
+                        // props: {
+                        //   endpointRoute: 'api.contacts.show', // or endpointUrl: '/api/contacts/{id}'
+                        //   token: apiKey,
+                        //   // Control which fields render and their labels/format
+                        //   fieldMap: [
+                        //     { key: 'first_name', label: 'First Name' },
+                        //     { key: 'last_name',  label: 'Last Name'  },
+                        //     { key: 'email',      label: 'Email'      },
+                        //     {
+                        //       key: 'created_at',
+                        //       label: 'Created',
+                        //       formatter: (v) => (v ? new Date(v).toLocaleString() : '—'),
+                        //     },
+                        //   ],
+                        //   // Or omit fieldMap to auto-list all properties except excluded:
+                        //   // exclude: ['some_large_json']
+                        // },
                     },
-                },
+                    {
+                        key: 'notes',
+                        props: {
+                        notableType: CONTACT_FQCN,
+                        notableId: id,
+                        token: apiKey,
+                        // parentId: 123, // optional, only if this form is a reply to another comment
+                        // meta: { source: 'contacts.index' }, // optional
+                        },
+                    },
+                    {
+                        key: 'comments',
+                        props: {
+                        commentableType: CONTACT_FQCN,
+                        commentableId: id,
+                        token: apiKey,
+                        // parentId: 123, // optional, only if this form is a reply to another comment
+                        // meta: { source: 'contacts.index' }, // optional
+                        },
+                    },
                 ]
 
 
 
             },
-            { trigger: () => firstName }
+            {
+                trigger: () => firstName,
+
+                // // 👇 FOOTER SLOT
+                // footer: () => h('div', { class: 'flex items-center gap-2' }, [
+                // h('button', {
+                //     class: 'inline-flex items-center rounded-md border px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground',
+                //     onClick: () => console.log('Save for', id),
+                // }, 'Save'),
+                // h('a', {
+                //     href,
+                //     class: 'inline-flex items-center rounded-md border px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground'
+                // }, 'Open full view'),
+                // ]),
+                // ##
+
+                // footer: (slotProps) =>
+                //     h(ContactModalFooter, {
+                //     id,
+                //     href,
+                //     onClose: slotProps.close, // available if you expose :close in the slot
+                // }),
+            }
             )
         },
         meta: { focusable: true },

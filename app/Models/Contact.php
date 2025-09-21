@@ -21,6 +21,20 @@ class Contact extends Model
         'notes',
     ];
 
-    
+    /**
+     * Polymorphic relation: this contact can have many comments.
+     */
+    public function comments()
+    {
+        return $this->morphMany(\App\Models\Comment::class, 'commentable');
+    }
+
+    /**
+     * Polymorphic relation: this contact can have many notes.
+     */
+    public function notes()
+    {
+        return $this->morphMany(\App\Models\Note::class, 'noteable');
+    }
 
 }

@@ -1,24 +1,16 @@
 <script setup lang="ts">
 // resources/js/components/Modal/Tray.vue
-
-import { Link } from '@inertiajs/vue3'
-import {
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetFooter,
-} from '@/components/ui/sheet'
+import { useSlots, computed } from 'vue'
+import SheetContent from '@/components/Modal/SheetContent.vue'
+import { 
+    //SheetContent, 
+    SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet'
 import ModalBlockContent from '@/components/Modal/ModalBlockContent.vue'
+import { DialogClose } from '@/components/ui/dialog'
+import { X } from 'lucide-vue-next'
 
 type BlockKey = 'fields' | 'notes' | 'comments'
-type BlockSpec =
-  | BlockKey
-  | {
-      key: BlockKey
-      title?: string
-      props?: Record<string, any>
-    }
+type BlockSpec = BlockKey | { key: BlockKey; title?: string; props?: Record<string, any> }
 
 const props = defineProps<{
   id: number | string
@@ -26,27 +18,50 @@ const props = defineProps<{
   title?: string
   subtitle?: string
   contentClass?: string
-  // NEW
   blocks?: BlockSpec[]
 }>()
 
 const emit = defineEmits<{ (e: 'close'): void }>()
+const slots = useSlots()
+
+// Show footer ONLY if a footer slot is actually provided
+const hasFooter = computed(() => Boolean(slots.footer))
 </script>
 
 <template>
-  <SheetContent side="right" :class="props.contentClass ?? 'w-[30rem] max-w-[90vw]'">
-    <SheetHeader class="flex items-start justify-between">
-      <div class="w-full">
-        <SheetTitle>{{ props.title ?? `Contact #${props.id}` }}</SheetTitle>
-        <SheetDescription>
+  <SheetContent
+    side="right"
+    :hide-close="true"                                 
+    :class="props.contentClass ?? 'w-[30rem] max-w-[90vw]'"
+  >
+    <SheetHeader
+      class="flex flex-row items-start sm:items-center justify-between m-0 pb-4 mb-6 gap-2 border-b border-muted/70"
+    >
+      <div class="flex flex-col flex-1 min-w-0">
+        <SheetTitle class="truncate">
+          {{ props.title ?? `Contact #${props.id}` }}
+        </SheetTitle>
+        <SheetDescription class="text-sm text-muted-foreground truncate">
           {{ props.subtitle ?? 'Quick actions and details' }}
         </SheetDescription>
       </div>
-      <slot name="headerExtra" />
+
+      <!-- right side: controls dropdown + inline close -->
+      <div class="flex items-center gap-1">
+        <slot name="headerExtra" />
+        <DialogClose as-child>
+          <button
+            type="button"
+            class="ml-1 inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground h-8 w-8"
+          >
+            <span class="sr-only">Close</span>
+            <X class="size-4" />
+          </button>
+        </DialogClose>
+      </div>
     </SheetHeader>
 
-    <!-- body -->
-    <div class="mt-4 space-y-3">
+    <div class="mt-4 space-y-3 p-4">
       <slot>
         <template v-if="props.blocks && props.blocks.length">
           <ModalBlockContent :id="props.id" :blocks="props.blocks" />
@@ -59,21 +74,9 @@ const emit = defineEmits<{ (e: 'close'): void }>()
       </slot>
     </div>
 
-    <SheetFooter class="mt-6 gap-2">
-      <Link
-        v-if="props.href"
-        :href="props.href"
-        class="inline-flex items-center rounded-md border px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-        @click="emit('close')"
-      >
-        Open full view
-      </Link>
-      <button
-        class="inline-flex items-center rounded-md border px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-        @click="emit('close')"
-      >
-        Close
-      </button>
+    <!-- Footer only when populated via slot -->
+    <SheetFooter v-if="hasFooter" class="mt-6 gap-2 border-t border-muted/70 pt-4">
+      <slot name="footer" />
     </SheetFooter>
   </SheetContent>
 </template>

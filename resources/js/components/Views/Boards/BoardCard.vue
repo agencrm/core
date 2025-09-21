@@ -1,21 +1,71 @@
-<script setup lang="ts">
 // resources/js/components/Views/Boards/BoardCard.vue
+<script setup lang="ts">
+/**
+ * Accept modal configuration and forward to <Modal>.
+ * You can pass either:
+ *  - blocks: an array, OR
+ *  - resolveBlocks: (ctx) => blocks
+ * Also accepts modal title/subtitle/contentClass/storageKey overrides.
+ */
 
 import { GripVertical, SquareArrowOutUpRight } from 'lucide-vue-next'
 import { route } from 'ziggy-js'
+import { computed } from 'vue'
 import Modal from '@/components/Modal/Modal.vue'
 import CellEditableFieldLabel from '@/components/Fields/InPlaceEditable/Label.vue'
+
+type BlockDef = {
+  key: string
+  props?: Record<string, any>
+}
 
 const props = defineProps<{
   item: any
   isOverlay?: boolean
   isGhost?: boolean
   labelMap?: Record<number, { id: number; name: string }>
+
+  // NEW: modal config inputs
+  blocks?: BlockDef[]
+  resolveBlocks?: (ctx: { item: any }) => BlockDef[]
+  modalTitle?: string | ((item: any) => string)
+  modalSubtitle?: string | ((item: any) => string)
+  modalContentClass?: string
+  modalStorageKey?: string
+
+  // optional token for inline fields inside the card header
+  token?: string
 }>()
 
 const href = typeof route === 'function'
-  ? route('flows.show', props.item?.id)
-  : `/flows/${props.item?.id}`
+  ? route('contacts.show', props.item?.id) // adjust if your route differs
+  : `/contacts/${props.item?.id}`
+
+// Resolve blocks (prefer resolver for per-item props)
+const resolvedBlocks = computed<BlockDef[]>(() => {
+  if (typeof props.resolveBlocks === 'function') {
+    return props.resolveBlocks({ item: props.item }) ?? []
+  }
+  return Array.isArray(props.blocks) ? props.blocks : []
+})
+
+function resolveStr(v?: string | ((item:any)=>string), fallback?: string) {
+  if (typeof v === 'function') return v(props.item)
+  return v ?? fallback ?? ''
+}
+
+const computedTitle = computed(() =>
+  resolveStr(props.modalTitle, `Contact #${props.item?.id}`)
+)
+const computedSubtitle = computed(() =>
+  resolveStr(props.modalSubtitle, 'Open the full page or close.')
+)
+const computedContentClass = computed(() =>
+  props.modalContentClass ?? 'w-[32rem] max-w-[95vw]'
+)
+const computedStorageKey = computed(() =>
+  props.modalStorageKey ?? 'ui.modal.boardCard'
+)
 </script>
 
 <template>
@@ -31,7 +81,7 @@ const href = typeof route === 'function'
     <div class="p-3 border-b-2 border-secondary flex items-center gap-2">
       <button
         class="inline-flex items-center justify-center rounded-md p-1 text-secondary-foreground/50 -ml-2 cursor-grab hover:bg-accent hover:text-accent-foreground"
-        aria-label="Move task"
+        aria-label="Move card"
       >
         <GripVertical class="w-4 h-4" />
       </button>
@@ -39,7 +89,7 @@ const href = typeof route === 'function'
       <CellEditableFieldLabel
         model="contact"
         :model-id="item.id"
-        token="apiKey"
+        :token="token"
         :value="item.label_id"
         :label-map="labelMap"
       />
@@ -50,15 +100,15 @@ const href = typeof route === 'function'
       <Modal
         :id="item.id"
         :href="href"
-        :title="`Contact #${item.id}`"
-        subtitle="Open the full page or close."
-        content-class="w-[32rem] max-w-[95vw]"
-        storage-key="ui.modal.boardCard"
+        :title="computedTitle"
+        :subtitle="computedSubtitle"
+        :content-class="computedContentClass"
+        :storage-key="computedStorageKey"
+        :blocks="resolvedBlocks"
       >
         <template #trigger>
           <button class="inline-flex items-center gap-1 font-medium underline-offset-2 hover:underline focus:outline-none">
             <span>{{ item.first_name }} {{ item.last_name }}</span>
-            <SquareArrowOutUpRight class="w-3.5 h-3.5 opacity-70" aria-hidden="true" />
           </button>
         </template>
 

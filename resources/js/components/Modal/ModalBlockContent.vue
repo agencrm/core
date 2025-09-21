@@ -12,7 +12,7 @@ import {
 // Lazy-load block components so unused ones don't affect bundle
 const BlockRegistry = {
   fields: defineAsyncComponent(() => import('./Blocks/Fields.vue')),
-  notes: defineAsyncComponent(() => import('./Blocks/Notes.vue')),
+  notes: defineAsyncComponent(() => import('./Blocks/Notes/NotesBlock.vue')),
   comments: defineAsyncComponent(() => import('./Blocks/Comments/CommentsBlock.vue')),
 } as const
 

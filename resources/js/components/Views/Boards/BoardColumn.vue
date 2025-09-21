@@ -7,6 +7,9 @@ import { GripVertical } from 'lucide-vue-next'
 import BoardCard from './BoardCard.vue'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
+type BlockDef = { key: string; props?: Record<string, any> }
+
+
 const props = defineProps<{
     id: string
     title: string
