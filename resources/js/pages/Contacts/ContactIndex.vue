@@ -16,6 +16,8 @@ import CellEditableFieldLabel from '@/components/Fields/InPlaceEditable/Label.vu
 import { toast } from 'vue-sonner'
 import { route } from 'ziggy-js'
 
+import { makeCreateHandlers } from '@/lib/datatable'
+
 const apiKey = import.meta.env.VITE_APP_API_KEY
 
 // console.log(apiKey);
@@ -35,6 +37,18 @@ const tableRef = ref<{ prependRow: (row:any)=>void } | null>(null)
 
 // Form
 const form = ref({ first_name: '', last_name: '', email: '' })
+
+const { handleSuccess, handleError } = makeCreateHandlers({
+    tableRef,
+    toast,
+    successMessage: 'Contact added',
+    onReset: () => {
+        form.value = { first_name: '', last_name: '', email: '' }
+        createOpen.value = false
+    },
+})
+
+
 const fieldMap = [
   { key: 'first_name', type: 'text',  label: 'First Name', placeholder: 'First Name' },
   { key: 'last_name',  type: 'text',  label: 'Last Name',  placeholder: 'Last Name'  },
@@ -204,32 +218,32 @@ const columns = [
     },
 ]
 
-// Helper to normalize resource vs raw
-function extractRow(json: any) {
-  const r = json?.data ?? json
-  return {
-    created_at: r.created_at ?? new Date().toISOString(),
-    updated_at: r.updated_at ?? new Date().toISOString(),
-    ...r,
-  }
-}
+// // Helper to normalize resource vs raw
+// function extractRow(json: any) {
+//   const r = json?.data ?? json
+//   return {
+//     created_at: r.created_at ?? new Date().toISOString(),
+//     updated_at: r.updated_at ?? new Date().toISOString(),
+//     ...r,
+//   }
+// }
 
-function handleSuccess(json: any) {
-  const row = extractRow(json)
-  if (row?.id) {
-    tableRef.value?.prependRow(row)
-    toast.success('Contact added')
-    // reset local form so the dialog is clean next open
-    form.value = { first_name: '', last_name: '', email: '' }
-    createOpen.value = false
-  } else {
-    toast('Saved, but response missing id; listing will refresh on next load')
-  }
-}
+// function handleSuccess(json: any) {
+//   const row = extractRow(json)
+//   if (row?.id) {
+//     tableRef.value?.prependRow(row)
+//     toast.success('Contact added')
+//     // reset local form so the dialog is clean next open
+//     form.value = { first_name: '', last_name: '', email: '' }
+//     createOpen.value = false
+//   } else {
+//     toast('Saved, but response missing id; listing will refresh on next load')
+//   }
+// }
 
-function handleError(err: any) {
-  console.error('Create contact failed', err)
-}
+// function handleError(err: any) {
+//   console.error('Create contact failed', err)
+// }
 </script>
 
 <template>
@@ -283,9 +297,6 @@ function handleError(err: any) {
           :auth-token="apiKey"
           v-slot:expand="{ row }"
         >
-          <div class="p-2">
-            <strong>Email:</strong> {{ row.original.email || '—' }}
-          </div>
         </DataTable>
       </template>
 

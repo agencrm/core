@@ -51,11 +51,12 @@
         touch {{ $sharedDir }}/.env
     fi
 
-    # Ownership & perms
+    # Base ownership & perms
     sudo chown -R deploy:www-data {{ $baseDir }}
     find {{ $baseDir }} -type d -exec chmod 775 {} \;
     find {{ $baseDir }} -type f -exec chmod 664 {} \;
 
+    # [ADDED] Storage/bootstrap/database ownership & perms for PHP-FPM (group www-data)
     sudo chown -R deploy:www-data {{ $sharedDir }}/storage {{ $sharedDir }}/bootstrap/cache {{ $sharedDir }}/database
     find {{ $sharedDir }}/storage -type d -exec chmod 775 {} \;
     find {{ $sharedDir }}/storage -type f -exec chmod 664 {} \;
