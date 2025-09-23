@@ -12,13 +12,13 @@ type BlockKey = 'fields' | 'notes' | 'comments'
 type BlockSpec = BlockKey | { key: BlockKey; title?: string; props?: Record<string, any> }
 
 const props = defineProps<{
-  id: number | string
-  href?: string
-  title?: string
-  subtitle?: string
-  contentClass?: string
-  storageKey?: string
-  blocks?: BlockSpec[]
+    id: number | string
+    href?: string
+    title?: string
+    subtitle?: string
+    contentClass?: string
+    storageKey?: string
+    blocks?: BlockSpec[]
     showFooter?: boolean      
 }>()
 
@@ -36,7 +36,7 @@ watch(preferred, (v) => writePref(prefKey.value, v))
 <template>
   <component :is="preferred === 'dialog' ? ShadDialog : Sheet" v-model:open="open">
     <component :is="preferred === 'dialog' ? DialogTrigger : SheetTrigger" as-child>
-      <button type="button" class="inline-flex items-center gap-1 text-blue-600 hover:underline focus:outline-none">
+      <button type="button" class="inline-flex items-center gap-1 hover:underline focus:outline-none">
         <slot name="trigger">{{ String(id) }}</slot>
         <SquareArrowOutUpRight class="h-3 w-3 opacity-70" />
       </button>

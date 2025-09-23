@@ -9,6 +9,8 @@ import { debounce } from 'lodash'
 import BoardControls from '@/components/Views/Boards/BoardControls.vue'
 import BoardColumn from '@/components/Views/Boards/BoardColumn.vue'
 
+type BlockDef = { key: string; props?: Record<string, any> }
+
 const props = defineProps<{
     routeName: string
     authToken: string
@@ -16,6 +18,13 @@ const props = defineProps<{
     labelGroupId?: number
     /** used by PATCH endpoint: /api/fields/:model/:id */
     modelName?: 'contact' | 'task' | 'project' | string
+    cardBlocks?: BlockDef[]
+    cardResolveBlocks?: (ctx: { item: any }) => BlockDef[]
+    cardModalTitle?: string | ((item: any) => string)
+    cardModalSubtitle?: string | ((item: any) => string)
+    cardModalContentClass?: string
+    cardModalStorageKey?: string
+    cardModalShowFooter?: boolean
 }>()
 
 const emit = defineEmits(['update:labelMap'])
@@ -362,6 +371,14 @@ async function handleCardDropped(payload: {
             :items="col.items"
             :label-map="labelMap"
             @dropped="handleCardDropped"
+            :card-blocks="props.cardBlocks"
+            :card-resolve-blocks="props.cardResolveBlocks"
+            :card-modal-title="props.cardModalTitle"
+            :card-modal-subtitle="props.cardModalSubtitle"
+            :card-modal-content-class="props.cardModalContentClass"
+            :card-modal-storage-key="props.cardModalStorageKey"
+            :token="props.authToken"
+            :card-modal-show-footer="props.cardModalShowFooter"
         />
     </div>
 </template>

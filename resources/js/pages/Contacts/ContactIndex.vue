@@ -14,6 +14,7 @@ import ViewController from '@/components/Views/ViewController.vue'
 import BoardView from '@/components/Views/Boards/BoardView.vue'
 import CellEditableFieldLabel from '@/components/Fields/InPlaceEditable/Label.vue'
 import { toast } from 'vue-sonner'
+import { route } from 'ziggy-js'
 
 const apiKey = import.meta.env.VITE_APP_API_KEY
 
@@ -48,6 +49,21 @@ watch(view, v => { try { localStorage.setItem(routeKey, v) } catch {} })
 
 const CONTACT_FQCN = 'App\\\\Models\\\\Contact'
 
+
+function resolveCardBlocks({ item }: { item: any }) {
+  const id = item?.id
+  return [
+    { key: 'fields' },
+    {
+      key: 'notes',
+      props: { notableType: CONTACT_FQCN, notableId: id, token: apiKey },
+    },
+    {
+      key: 'comments',
+      props: { commentableType: CONTACT_FQCN, commentableId: id, token: apiKey },
+    },
+  ]
+}
 
 // Columns
 const columns = [
@@ -280,6 +296,11 @@ function handleError(err: any) {
           class="min-h-[100vh] md:min-h-min"
           :show-board-controls="showBoardControls"
           :label-group-id="1"
+          :card-resolve-blocks="resolveCardBlocks"
+          :card-modal-title="(i) => `${i.first_name ?? 'Contact'} (#${i.id})`"
+          :card-modal-subtitle="(i) => 'Open the full page or close.'"
+          :card-modal-content-class="'w-[32rem] max-w-[95vw]'"
+          :card-modal-storage-key="'ui.modal.boardCard'"
         />
       </template>
     </div>

@@ -16,6 +16,16 @@ const props = defineProps<{
     items: { id: string | number; [key: string]: any }[]
     labelMap: Record<number, { id: number; name: string; color?: string }>
     columnMap?: Record<number, { id: number; name: string; group_id?: string }>
+
+    cardBlocks?: BlockDef[]
+    cardResolveBlocks?: (ctx: { item: any }) => BlockDef[]
+    cardModalTitle?: string | ((item: any) => string)
+    cardModalSubtitle?: string | ((item: any) => string)
+    cardModalContentClass?: string
+    cardModalStorageKey?: string
+    token?: string
+    cardModalShowFooter?: boolean
+
 }>()
 
 const emit = defineEmits<{
@@ -82,13 +92,26 @@ function handleChange(evt: any) {
  * Header border style resolves the label color (hex like #e01b24) if available.
  * Fallback uses the theme border color so it still looks intentional.
  */
-const headerStyle = computed(() => {
-    const color = props.labelMap?.[Number(props.id)]?.color
-    return {
-        // thick bottom border; adjust width if you want it thinner/thicker
-        borderBottom: `4px solid ${color && /^#|rgb|hsl/i.test(color) ? color : 'var(--border)'}`,
-    } as Record<string, string>
+// const headerStyle = computed(() => {
+//     const color = props.labelMap?.[Number(props.id)]?.color
+//     return {
+//         // thick bottom border; adjust width if you want it thinner/thicker
+//         borderBottom: `4px solid ${color && /^#|rgb|hsl/i.test(color) ? color : 'var(--border)'}`,
+//     } as Record<string, string>
+// })
+
+const columnColor = computed(() => {
+  const c = props.labelMap?.[Number(props.id)]?.color
+  return c && /^#|rgb|hsl/i.test(c) ? c : 'var(--border)'
 })
+
+const headerStyle = computed(() => ({
+  borderBottom: `4px solid ${columnColor && /^#|rgb|hsl/i.test(columnColor) ? columnColor : 'var(--border)'}`,
+}))
+
+console.log('labelMap for column', props.id, props.labelMap[Number(props.id)]);
+
+
 </script>
 
 <template>
@@ -96,7 +119,14 @@ const headerStyle = computed(() => {
         class="h-full w-[350px] flex flex-col flex-shrink-0 snap-center rounded-lg border bg-primary-foreground text-card-foreground shadow-sm"
     >
         <!-- Thick bottom border in label color -->
-        <div class="p-4 font-semibold flex items-center border-b-0" :style="headerStyle">
+    <div
+      class="p-4 font-semibold flex items-center"
+      :style="{
+        borderBottomWidth: '4px',
+        borderBottomStyle: 'solid',
+        borderBottomColor: columnColor
+      }"
+    >
             <button
                 class="inline-flex items-center justify-center rounded-md p-1 text-primary/50 -ml-2 cursor-grab hover:bg-accent hover:text-accent-foreground"
                 aria-label="Move column"
@@ -131,10 +161,21 @@ const headerStyle = computed(() => {
                             :item="element"
                             :label-map="labelMap"
                             :is-ghost="isDraggingItem(element.id)"
+                            :border-color="columnColor"
+                            :blocks="cardBlocks"
+                            :resolve-blocks="cardResolveBlocks"
+                            :modal-title="cardModalTitle"
+                            :modal-subtitle="cardModalSubtitle"
+                            :modal-content-class="cardModalContentClass"
+                            :modal-storage-key="cardModalStorageKey"
+                            :token="token"
+                            :modal-show-footer="cardModalShowFooter"
                         />
                     </template>
 
                     <template #clone="{ element }">
+
+
                         <BoardCard :item="element" is-overlay />
                     </template>
                 </draggable>

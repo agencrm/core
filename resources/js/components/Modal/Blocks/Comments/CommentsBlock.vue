@@ -1,27 +1,13 @@
 <script setup lang="ts">
-// resources/js/components/Modal/Blocks/Comments/CommentsBlock.vue
-
-/**
- * NOTE FOR FUTURE ME:
- * This block is rendered inside ModalBlockContent's accordion.
- * It ONLY needs to render the comment form. I'm keeping the original
- * imports/vars you had in this file commented (or unused) so nothing is "lost",
- * but the active logic is focused on comments to avoid runtime issues.
- */
-
 import { ref, computed, onMounted, watch, h } from 'vue'
+import DOMPurify from 'dompurify'
 import CreateCommentForm from '@/components/Modal/Blocks/Comments/Form.vue'
 import DataTable from '@/components/DataTable/DataTable.vue'
 
-/**
- * Props
- * - `id` is forwarded automatically by ModalBlockContent (the parent modal's entity id)
- * - The rest can be passed via blocks[].props from the caller; commentableId is optional
- */
 const props = defineProps<{
   id: number | string
-  commentableType: string                 // e.g. 'App\\Models\\Contact' (escape as 'App\\\\Models\\\\Contact' in JS)
-  commentableId?: number | string         // fallback to `id` if omitted
+  commentableType: string
+  commentableId?: number | string
   token?: string
   parentId?: number
   meta?: Record<string, any>
@@ -33,28 +19,37 @@ const emit = defineEmits<{
 }>()
 
 const apiKey = import.meta.env.VITE_APP_API_KEY
-
 const resolvedCommentableId = computed(() => props.commentableId ?? props.id)
 
-/* ---------- Optimistic UI bits ---------- */
-// Assumes your DataTable exposes a prependRow(row) method (like in ContactIndex)
+// Table ref (expects .prependRow(row))
 const tableRef = ref<{ prependRow: (row: any) => void } | null>(null)
 
-// Normalize API response to a plain row the table can render
+// Normalize API or optimistic row to a flat row
 function extractRow(json: any) {
   const r = json?.data ?? json
   return {
-    // sensible defaults if API doesn't echo them
     created_at: r.created_at ?? new Date().toISOString(),
     updated_at: r.updated_at ?? new Date().toISOString(),
     ...r,
   }
 }
 
+// OPTIMISTIC handler: add immediately
+function onCreatedOptimistic(payload: any) {
+  const row = extractRow(payload)
+  if (
+    row &&
+    String(row.commentable_type) === String(props.commentableType) &&
+    Number(row.commentable_id) === Number(resolvedCommentableId.value)
+  ) {
+    tableRef.value?.prependRow(row)
+  }
+}
+
+// SUCCESS handler: also prepend (optionally reconcile later if your table supports replace/remove)
 function onCreated(payload: any) {
   emit('created', payload)
   const row = extractRow(payload)
-
   if (
     row?.id != null &&
     String(row.commentable_type) === String(props.commentableType) &&
@@ -64,58 +59,46 @@ function onCreated(payload: any) {
   }
 }
 
-
 function onError(err: any) {
   emit('error', err)
 }
-/* --------------------------------------- */
 
-// (kept from your version)
-const breadcrumbs = [{ title: 'Flows', href: '/comments' }]
-const showBoardControls = ref(false)
-
-const form = ref({
-  name: '',
-  description: '',
-})
-
-// fields for the create form
-const fieldMap = [
-  { key: 'name', type: 'text', label: 'Name', placeholder: 'Flow name' },
-  { key: 'description', type: 'text', label: 'Description', placeholder: 'Describe the flow' },
-]
-
-// view state
+// Local view state you had (kept minimal)
 const routeKey = `viewMode:/comments`
 const view = ref<'table' | 'board'>('table')
-
 onMounted(() => {
-  try {
-    const stored = localStorage.getItem(routeKey)
-    if (stored === 'board' || stored === 'table') view.value = stored
-  } catch {}
+  try { const s = localStorage.getItem(routeKey); if (s === 'board' || s === 'table') view.value = s } catch {}
 })
-watch(view, val => {
-  try { localStorage.setItem(routeKey, val) } catch {}
-})
+watch(view, v => { try { localStorage.setItem(routeKey, v) } catch {} })
 
-// comments table columns (trimmed per your latest code)
+// Columns — widen sanitizer so highlight/table markup survives
 const columns = [
   { accessorKey: 'id', header: 'ID', cell: ({ row }: any) => row.getValue('id') },
+  {
+    accessorKey: 'body',
+    header: 'Body',
+    cell: ({ row }: any) => {
+      const raw = row.getValue('body') ?? ''
+      const clean = DOMPurify.sanitize(String(raw), {
+        ALLOWED_TAGS: [
+          'b','i','strong','em','a','p','ul','ol','li','br','pre','code','blockquote','span','mark',
+          'table','thead','tbody','tr','th','td','col','colgroup'
+        ],
+        ALLOWED_ATTR: ['href','target','rel','class','style','colspan','rowspan'],
+        ALLOW_DATA_ATTR: true,
+      })
+      return h('div', {
+        class: 'prose prose-sm max-w-none whitespace-pre-wrap break-words',
+        innerHTML: clean,
+      })
+    },
+  },
   {
     accessorKey: 'updated_at',
     header: 'Updated',
     cell: ({ row }: any) => new Date(row.getValue('updated_at')).toLocaleString(),
   },
 ]
-
-function handleSuccess() {
-  // optionally close dialog and reload table here (depends on your DataTable API)
-}
-
-function handleError(err: any) {
-  console.error(err)
-}
 </script>
 
 <template>
@@ -126,23 +109,24 @@ function handleError(err: any) {
     :parent-id="parentId"
     :token="token || apiKey"
     :meta="meta"
+    @created-optimistic="onCreatedOptimistic"
     @created="onCreated"
     @error="onError"
   />
 
   <!-- Comments table -->
-    <DataTable
-        ref="tableRef"
-        endpoint-route="api.comments.index"
-        :columns="columns"
-        search-placeholder="Search comments..."
-        :auth-token="apiKey"
-        :params="{
-            commentable_type: commentableType,
-            commentable_id: Number(resolvedCommentableId)
-        }"
-        v-slot:expand="{ row }"
-    >
+  <DataTable
+    ref="tableRef"
+    endpoint-route="api.comments.index"
+    :columns="columns"
+    search-placeholder="Search comments..."
+    :auth-token="apiKey"
+    :params="{
+      commentable_type: commentableType,
+      commentable_id: Number(resolvedCommentableId)
+    }"
+    v-slot:expand="{ row }"
+  >
     <div class="p-2">
       <strong>Description:</strong> {{ row.original.description || '—' }}
     </div>
