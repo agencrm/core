@@ -40,11 +40,11 @@ const mainNavItems: NavItem[] = [
         href: '/meetings',
         icon: Presentation,
     },
-    {
-        title: 'Messages',
-        href: '/messages',
-        icon: MessageSquare,
-    },
+    // {
+    //     title: 'Messages',
+    //     href: '/messages',
+    //     icon: MessageSquare,
+    // },
     {
         title: 'Comments',
         href: '/comments',

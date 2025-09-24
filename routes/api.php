@@ -124,6 +124,7 @@ Route::name('api.')->group(function () {
         Route::delete('/{id}', [ViewController::class, 'destroy'])->name('destroy');
     });
 
+    // Webhooks
     Route::prefix('webhooks')->name('webhooks.')->group(function () {
         Route::prefix('hits')->name('hits.')->middleware('auth:sanctum')->group(function () {
             Route::get('/', [WebhookHitController::class, 'index'])->name('index');     // api.webhooks.hits.index

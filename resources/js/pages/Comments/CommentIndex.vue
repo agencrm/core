@@ -1,84 +1,126 @@
 <script setup lang="ts">
-// resources/js/pages/Comments/CommentIndex.vue
-
 import { ref, onMounted, watch, h } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
-import { Head, Link } from '@inertiajs/vue3'
+import { Head } from '@inertiajs/vue3'
 import DataTable from '@/components/DataTable/DataTable.vue'
-import { Plus, Settings2 } from 'lucide-vue-next'
+import { Settings2 } from 'lucide-vue-next'
 import DOMPurify from 'dompurify'
+import Modal from '@/components/Modal/Modal.vue'
+import { route } from 'ziggy-js'
 
 const apiKey = import.meta.env.VITE_APP_API_KEY
+const CONTACT_FQCN = 'App\\\\Models\\\\Contact'
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-
-// import CreateElementForm from '@/components/Forms/CreateElement.vue'
-
-// page state
 const breadcrumbs = [{ title: 'Comments', href: '/comments' }]
 const showBoardControls = ref(false)
 
-const form = ref({
-  name: '',
-  description: '',
-})
-
-// fields for the create form
-const fieldMap = [
-  { key: 'name', type: 'text', label: 'Name', placeholder: 'Comment name' },
-  { key: 'description', type: 'text', label: 'Description', placeholder: 'Describe the comment' },
-]
-
-// view state
 const routeKey = `viewMode:/comments`
 const view = ref<'table' | 'board'>('table')
+onMounted(() => { try { const s = localStorage.getItem(routeKey); if (s === 'board' || s === 'table') view.value = s } catch {} })
+watch(view, v => { try { localStorage.setItem(routeKey, v) } catch {} })
 
-onMounted(() => {
-  try {
-    const stored = localStorage.getItem(routeKey)
-    if (stored === 'board' || stored === 'table') view.value = stored
-  } catch {}
-})
-watch(view, val => {
-  try { localStorage.setItem(routeKey, val) } catch {}
-})
+// 👇 this will hold sideloaded "parents" map from the API (if present)
+const parentsMap = ref<Record<string, { label: string, data?: any }>>({})
 
-// comments table columns
-// const columns = [
-//   { accessorKey: 'name', header: 'Name', cell: ({ row }) => row.getValue('name') },
-//   { accessorKey: 'slug', header: 'Slug', cell: ({ row }) => row.getValue('slug') },
-//   { accessorKey: 'status', header: 'Status', cell: ({ row }) => row.getValue('status') ?? 'draft' },
-//   {
-//     accessorKey: 'updated_at',
-//     header: 'Updated',
-//     cell: ({ row }) => new Date(row.getValue('updated_at')).toLocaleString(),
-//   },
-// ]
+// ⭐ if your DataTable emits the whole JSON payload after fetch, capture the sideloads.
+//   (Rename the event if your component uses a different one, e.g. @loaded, @fetched, etc.)
+function handleLoadedPayload(payload: any) {
+  parentsMap.value = payload?.included?.parents ?? {}
+}
+
+// helper: build a key and resolve label/data from sideload OR inline row
+function resolveParent(row: any) {
+  const t = row.original?.commentable?.type ?? row.original?.commentable_type
+  const id = row.original?.commentable?.id ?? row.original?.commentable_id
+  const key = t && id ? `${t}:${id}` : null
+
+  // 1) try sideloaded map
+  if (key && parentsMap.value[key]) {
+    return { type: t, id, label: parentsMap.value[key].label, data: parentsMap.value[key].data }
+  }
+  // 2) fallback to inline (if your resource injects it)
+  const inline = row.original?.commentable
+  if (inline?.label) {
+    return { type: t, id, label: inline.label, data: inline.data }
+  }
+  // 3) last resort generic
+  return { type: t, id, label: t && id ? `${t.split('\\').pop()} #${id}` : '—', data: null }
+}
+
+// helper: choose modal blocks based on type
+function resolveBlocksForType(type: string | null, id: number | string | null) {
+  if (!type || !id) return []
+
+  // Contact
+  if (type === CONTACT_FQCN) {
+    return [
+      { key: 'fields' },
+      {
+        key: 'notes',
+        props: { notableType: CONTACT_FQCN, notableId: id, token: apiKey },
+      },
+      {
+        key: 'comments',
+        props: { commentableType: CONTACT_FQCN, commentableId: id, token: apiKey },
+      },
+    ]
+  }
+
+  // add other commentables here (Entity/Project/Task/etc)
+  // if (type === 'App\\Models\\Entity') { ... }
+
+  return [{ key: 'fields' }]
+}
 
 const columns = [
   { accessorKey: 'id', header: 'ID', cell: ({ row }: any) => row.getValue('id') },
+
+  // 🔹 Commentable column with Modal trigger
+  {
+    accessorKey: 'commentable',
+    header: 'On',
+    cell: ({ row }: any) => {
+      const parent = resolveParent(row)
+      const id = parent.id
+      const type = parent.type
+      const label = parent.label ?? '—'
+
+      // pick a canonical show route when it's a Contact
+      const href =
+        type === CONTACT_FQCN
+          ? (typeof route === 'function' ? route('contacts.show', id) : `/contacts/${id}`)
+          : '#'
+
+      return h(
+        Modal,
+        {
+          id,
+          href,
+          title: `${label}${id ? ` (#${id})` : ''}`,
+          subtitle: 'Open the full page or close.',
+          contentClass: 'w-[32rem] max-w-[95vw]',
+          storageKey: 'ui.modal.comments.parentCell',
+          showFooter: false,
+          blocks: resolveBlocksForType(String(type ?? ''), id),
+        },
+        {
+          trigger: () => label,
+        }
+      )
+    },
+    meta: { focusable: true },
+  },
+
   {
     accessorKey: 'body',
     header: 'Body',
     cell: ({ row }: any) => {
       const raw = row.getValue('body') ?? ''
       const clean = DOMPurify.sanitize(String(raw), {
-        ALLOWED_TAGS: [
-          'b','i','strong','em','a','p','ul','ol','li','br','pre','code','blockquote','span'
-        ],
+        ALLOWED_TAGS: ['b','i','strong','em','a','p','ul','ol','li','br','pre','code','blockquote','span'],
         ALLOWED_ATTR: ['href','target','rel','class']
       })
-      return h('div', {
-        class: 'prose prose-sm max-w-none whitespace-pre-wrap break-words',
-        innerHTML: clean
-      })
+      return h('div', { class: 'prose prose-sm max-w-none whitespace-pre-wrap break-words', innerHTML: clean })
     }
   },
   {
@@ -86,47 +128,9 @@ const columns = [
     header: 'Updated',
     cell: ({ row }: any) => new Date(row.getValue('updated_at')).toLocaleString(),
   },
-  
-  // {
-  //   accessorKey: 'id',
-  //   header: 'ID',
-  //   cell: ({ row }) => {
-  //     const id = row.original.id
-  //     const href = (typeof route === 'function')
-  //       ? route('comments.show', id)
-  //       : `/comments/${id}`
-  //     return h(Link, { href, class: 'text-blue-600 hover:underline' }, () => String(id))
-  //   },
-  // },
-  // {
-  //   accessorKey: 'name',
-  //   header: 'Name',
-  //   cell: ({ row }) => {
-  //     const id = row.original.id
-  //     const name = row.getValue('name')
-  //     const href = (typeof route === 'function')
-  //       ? route('comments.show', id)
-  //       : `/comments/${id}`
-  //     return h(Link, { href, class: 'text-blue-600 hover:underline' }, () => name)
-  //   },
-  // },
-  // { accessorKey: 'slug', header: 'Slug', cell: ({ row }) => row.getValue('slug') },
-  // { accessorKey: 'status', header: 'Status', cell: ({ row }) => row.getValue('status') ?? 'draft' },
-  // {
-  //   accessorKey: 'updated_at',
-  //   header: 'Updated',
-  //   cell: ({ row }) => new Date(row.getValue('updated_at')).toLocaleString(),
-  // },
 ]
-
-function handleSuccess() {
-  // optionally close dialog and reload table here (depends on your DataTable API)
-}
-
-function handleError(err: any) {
-  console.error(err)
-}
 </script>
+
 
 <template>
   <Head title="Comments" />
@@ -144,7 +148,7 @@ function handleError(err: any) {
     </template>
 
     <template #action-controls>
-      <Dialog>
+      <!-- <Dialog>
         <DialogTrigger>
           <Plus />
         </DialogTrigger>
@@ -165,7 +169,7 @@ function handleError(err: any) {
             </DialogDescription>
           </DialogHeader>
         </DialogContent>
-      </Dialog>
+      </Dialog> -->
     </template>
 
     <div class="flex flex-col gap-4 p-4">
